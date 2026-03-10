@@ -14,6 +14,8 @@ INPUT_TXT_PATH = os.path.join(ROOT_DIR, "Csv", "temp_user_input.txt")
 OUTPUT_RTF_PATH = os.path.join(ROOT_DIR, "Csv", "output_data.rtf")
 TEMPLATE_PATH = os.path.join(ROOT_DIR, "CorelDRAW Templates", "MV_PLATE.cdr")
 
+FINAL_PDF_PATH = os.path.join(ROOT_DIR, "LTO_Batch_Output.pdf")
+
 def run_pipeline():
     print("--- Starting LTO Automation Pipeline ---")
     
@@ -32,8 +34,20 @@ def run_pipeline():
     if automator.connect():
         automator.open_template(TEMPLATE_PATH)
         
-        # Next phase placeholder: Bind RTF and print
-        # automator.bind_and_print(OUTPUT_RTF_PATH)
+        # 4. Execute print merge to pdf
+        time.sleep(5)
+
+        merge_success = execute_print_merge_to_pdf(
+            automator.corel,
+            automator.doc,
+            OUTPUT_RTF_PATH,
+            FINAL_PDF_PATH
+        )
+
+        if merge_success:
+            print("--- pipeline completed successfully ---")
+        else:
+            print ("--- pipeline failed at print merge ---")
 
 if __name__ == "__main__":
     run_pipeline()
