@@ -31,4 +31,4 @@ def execute_print_merge_to_pdf(corel_app, template_doc, rtf_data_path, output_pd
     
     except Exception as e:
         print (f"Print Merge Error: {e}")
-        return false
+        return False
