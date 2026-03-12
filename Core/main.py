@@ -1,6 +1,8 @@
 import os
+import time
 from data_processor import export_data_to_rtf
 from corel_engine import CorelAutomator
+from print_handler import execute_print_merge_to_pdf
 
 # System paths
 # BASE_DIR is the 'Core' folder
