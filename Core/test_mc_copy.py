@@ -11,20 +11,19 @@ doc = corel.OpenDocument(template_path)
 try:
     print("Testing copy on MC...")
     page1 = doc.Pages.Item(1)
-    print("Shapes count:", page1.Shapes.Count)
     
-    # Add new page
-    print("Adding page...")
-    doc.AddPages(1)
-    
-    print("Selecting everything...")
+    print("Looping through shapes...")
     page1.Activate()
-    sr = page1.Shapes.All()
-    print("Selected shape range size:", sr.Count)
-    
-    print("Performing Copy...")
-    sr.Copy()
-    print("Copy successful.")
+    for i in range(1, page1.Shapes.Count + 1):
+        s = page1.Shapes.Item(i)
+        print(f"[{i}] Type: {s.Type}, Name: {s.Name}")
+        try:
+            s.Copy()
+            print("  -> Copied successfully.")
+        except Exception as e:
+            print(f"  -> Failed: {e}")
+            
+    print("Trying to group them and copy...")
     
 except Exception as e:
     traceback.print_exc()
