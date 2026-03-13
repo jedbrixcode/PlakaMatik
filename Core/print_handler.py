@@ -6,8 +6,8 @@ def execute_print_merge_to_pdf(corel_app, template_doc, data_records, output_pdf
     try:
         print(f"Initializing manual Python merge sequence... Template Type: {plate_type}")
 
-        # Set unit to cm (11 = cdrCentimeter)
-        template_doc.Unit = 11
+        # Set unit to cm (4 = cdrCentimeter)
+        template_doc.Unit = 4
         
         page1 = template_doc.Pages.Item(1)
         total_records = len(data_records)

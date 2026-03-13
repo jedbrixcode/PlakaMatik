@@ -35,7 +35,13 @@ def run_pipeline():
 
     print(f"Determined Plate Type: {plate_type}")
     template_path = TEMPLATE_MV_PATH if plate_type == "MV" else TEMPLATE_MC_PATH
-    final_pdf_path = os.path.join(ROOT_DIR, f"LTO_Batch_Output_{plate_type}.pdf")
+    
+    # Define outputs directory for clean architecture
+    outputs_dir = os.path.join(ROOT_DIR, "Outputs")
+    if not os.path.exists(outputs_dir):
+        os.makedirs(outputs_dir)
+        
+    final_pdf_path = os.path.join(outputs_dir, f"LTO_Batch_Output_{plate_type}.pdf")
 
     # 2. Initialize the automation engine
     automator = CorelAutomator()
