@@ -8,21 +8,26 @@ class CorelAutomator:
         self.corel = None
         self.doc = None
 
+    # Trial screen bypass
     def bypass_trial_screen(self):
-        time.sleep(5)
-        print("searching for the trial screen...")
+        time.sleep(1)
+        print("waiting for the trial screen...")
         pyautogui.press('esc')
         print('close successfully clicked')
 
+    # Connect to CorelDRAW
     def connect(self):
         try:
+            # Connect to CorelDRAW
             print("attempting to connect to CorelDRAW 2018...")
             self.corel = win32com.client.Dispatch("CorelDRAW.Application")
             self.corel.Visible = True
 
+            # Wait for UI to stabilize
             time.sleep(7)
             print("waiting for UI to stabilize...")
 
+            # set window state to normal
             try: 
                 self.corel.Frame.WindowState = 1
             except Exception as ui_error:
@@ -30,13 +35,16 @@ class CorelAutomator:
 
             print("success! corelDraw connection established")
             return True
+
         except Exception as e:
             print("Failed to connect to CorelDRAW")
             print(f"Error details: {e}")
             return False
 
+    # open template specified by the operator
     def open_template(self, template_path):
         try:
+            # check if template exists
             if not os.path.exists(template_path):
                 print(f"Error: Template not found at {template_path}")
                 return
