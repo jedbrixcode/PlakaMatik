@@ -17,7 +17,12 @@ __pycache__/
 *.py[cod]
 venv/
 .env
-
+# Output files
+*.pdf
+*.rtf
+csv/temp_user_input.txt
+csv/output_data.rtf
+csv/flutter_user_input.txt
 
 # IntelliJ related
 *.iml
