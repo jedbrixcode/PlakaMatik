@@ -28,7 +28,7 @@ void main() async {
 }
 
 class PlakaMatikApp extends StatelessWidget {
-  const PlakaMatikApp({Key? key}) : super(key: key);
+  const PlakaMatikApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +38,8 @@ class PlakaMatikApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Segoe UI',
         useMaterial3: true,
-        scaffoldBackgroundColor: Colors.transparent, // Background handled by MainLayout stack
+        scaffoldBackgroundColor:
+            Colors.transparent, // Background handled by MainLayout stack
       ),
       home: MainLayout(),
     );

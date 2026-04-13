@@ -35,7 +35,7 @@ class MainLayout extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               child: Container(
                 color: Colors.white.withOpacity(
-                  0.9,
+                  0.7,
                 ), // Glassmorphism-like solid backdrop
                 child: Consumer<NavigationViewModel>(
                   builder: (context, navModel, child) {
@@ -105,16 +105,15 @@ class MainLayout extends StatelessWidget {
                     endIndent: 20,
                     indent: 20,
                   ),
-                  const SizedBox(height: 20),
-                  const _NavButton(
-                    index: 0,
-                    title: "Batch Print",
-                    icon: Icons.view_list,
-                  ),
                   const _NavButton(
                     index: 1,
                     title: "Single Print",
                     icon: Icons.print,
+                  ),
+                  const _NavButton(
+                    index: 0,
+                    title: "Batch Print",
+                    icon: Icons.view_list,
                   ),
                   const _NavButton(
                     index: 2,
