@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:window_manager/window_manager.dart';
 import 'services/cleanup_service.dart';
 import 'services/log_watcher_service.dart';
 import 'viewmodels/batch_viewmodel.dart';
@@ -12,6 +13,19 @@ void main() async {
 
   final cleanupService = CleanupService();
   await cleanupService.initialize();
+  await windowManager.ensureInitialized();
+
+  WindowOptions windowOptions = const WindowOptions(
+    size: Size(1280, 720),
+    minimumSize: Size(1024, 720),
+    center: true,
+    title: 'Plakamatik - Automatic UV Printed Protocol Plates',
+  );
+
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });
 
   runApp(
     MultiProvider(
