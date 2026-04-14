@@ -1,0 +1,32 @@
+
+
+--- [SESSION START: 20260414_1632] ---
+--- Starting LTO Automation Batch (Session 20260414_1632) ---
+Reading 8 lines from input...
+Data parsed: 20TH CONGRESS | BAM
+Data parsed: PRESIDENT | PBBM
+Data parsed: SD | A510
+Data parsed: DILG | JVCR
+Data parsed: BIR | G880
+Data parsed: VINTAGE MC 1969 | ----
+Data parsed: VINTAGE VEHICLE | 1977
+Success: Extracted 2 valid records for UV printing chunk.
+Running cleanup. Protecting current session: 20260414_1632
+Purged old ghost file: LTO_Batch_Output_MC.pdf
+Purged old ghost file: LTO_Batch_Output_MV.pdf
+waiting for the trial screen...
+Trial screen bypassed
+attempting to connect to CorelDRAW 2018...
+waiting for UI to stabilize...
+Note: could not set windowstate (UI loading)
+success! corelDraw connection established
+Initiating printing logic sequence...
+Initializing Master Engine merge. Total records to process: 2
+Creating Master A3 payload layout...
+Opening template for Record 1/2 Type: MV
+Opening template for Record 2/2 Type: MV
+Data mapping securely applied to A3 target. Exporting to C:\Users\Window 10\Documents\Jed Internship\Project\plakamatic_flutterui\Outputs\LTO_Batch_20260414_1632.pdf
+Silenced PDF export achieved.
+Master workspace cleared perfectly.
+--- Pipeline complete. Preview generated: C:\Users\Window 10\Documents\Jed Internship\Project\plakamatic_flutterui\Outputs\LTO_Batch_20260414_1632.pdf ---
+All orphaned CorelDRAW handles released successfully.

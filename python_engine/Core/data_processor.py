@@ -20,7 +20,7 @@ def parse_input_data(input_path):
                 clean_line = line.rstrip()
                 
                 # skip empty lines and header
-                if not clean_line or "Variable 1" in clean_line:
+                if not clean_line or "Variable 1" in clean_line or "MIDDLE    IDENTIFIER" in clean_line or "MIDDLE" in clean_line:
                     continue
 
                 # split line into columns
@@ -48,7 +48,9 @@ def parse_input_data(input_path):
 
         # check if any data was parsed
         if len(parsed_data) > 0:    
-            print(f"Success: Extracted {len(parsed_data)} valid records.")
+            # Enforce max 2 records due to UV printer physical bed capacity limit
+            parsed_data = parsed_data[:2]
+            print(f"Success: Extracted {len(parsed_data)} valid records for UV printing chunk.")
             return parsed_data
         else:
             print("Warning: No valid data found.")
