@@ -8,9 +8,10 @@ from print_handler import execute_print_merge_to_pdf
 # System paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
+FLUTTER_ROOT_DIR = os.path.dirname(ROOT_DIR)
 
 # Dynamic routing to the correct folders
-INPUT_TXT_PATH = os.path.join(ROOT_DIR, "csv", "flutter_user_input.txt")
+INPUT_TXT_PATH = os.path.join(FLUTTER_ROOT_DIR, "csv", "flutter_user_input.txt")
 TEMPLATE_MV_PATH = os.path.join(ROOT_DIR, "CorelDRAW Templates", "MV_PLATE.cdr")
 TEMPLATE_MC_PATH = os.path.join(ROOT_DIR, "CorelDRAW Templates", "Protocol Plates MC.cdr")
 def run_pipeline():

@@ -41,9 +41,9 @@ class MainLayout extends StatelessWidget {
                   builder: (context, navModel, child) {
                     switch (navModel.currentIndex) {
                       case 0:
-                        return MultiplePlateView();
+                        return SinglePlateView();
                       case 1:
-                        return const SinglePlateView();
+                        return const MultiplePlateView();
                       case 2:
                         return const InformationView();
                       case 3:
@@ -106,12 +106,12 @@ class MainLayout extends StatelessWidget {
                     indent: 20,
                   ),
                   const _NavButton(
-                    index: 1,
+                    index: 0,
                     title: "Single Print",
                     icon: Icons.print,
                   ),
                   const _NavButton(
-                    index: 0,
+                    index: 1,
                     title: "Batch Print",
                     icon: Icons.view_list,
                   ),

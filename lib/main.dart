@@ -17,7 +17,7 @@ void main() async {
 
   WindowOptions windowOptions = const WindowOptions(
     size: Size(1280, 720),
-    minimumSize: Size(1024, 720),
+    minimumSize: Size(1200, 600),
     center: true,
     title: 'Plakamatik - Automatic UV Printed Protocol Plates',
   );

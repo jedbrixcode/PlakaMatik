@@ -30,7 +30,7 @@ class InformationView extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: TabBar(
-                      padding: EdgeInsets.symmetric(horizontal: 1.0),
+                      padding: EdgeInsets.symmetric(horizontal: 10),
                       labelColor: Colors.white,
                       unselectedLabelColor: const Color(0xFF1E3A5F),
                       indicatorColor: Colors.transparent,
@@ -40,9 +40,9 @@ class InformationView extends StatelessWidget {
                       ),
 
                       tabs: [
-                        Tab(text: "Program Description"),
-                        Tab(text: "Quick Start Guide"),
-                        Tab(text: "Essential Setup"),
+                        Tab(text: "   Program Description   "),
+                        Tab(text: "   Quick Start Guide   "),
+                        Tab(text: "   Essential Setup   "),
                       ],
                     ),
                   ),
