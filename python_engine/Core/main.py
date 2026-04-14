@@ -39,7 +39,7 @@ def run_pipeline():
     template_path = TEMPLATE_MV_PATH if plate_type == "MV" else TEMPLATE_MC_PATH
     
     # Define outputs directory for clean architecture
-    outputs_dir = os.path.join(ROOT_DIR, "Outputs")
+    outputs_dir = os.path.join(FLUTTER_ROOT_DIR, "Outputs")
     if not os.path.exists(outputs_dir):
         os.makedirs(outputs_dir)
         

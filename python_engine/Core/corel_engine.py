@@ -13,7 +13,7 @@ class CorelAutomator:
         time.sleep(5)
         print("waiting for the trial screen...")
         pyautogui.hotkey('alt', 'z')
-        time.sleep(5)
+        time.sleep(1)
         print('close successfully clicked')
 
     # Connect to CorelDRAW
