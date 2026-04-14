@@ -2,71 +2,48 @@ import os
 import time
 import traceback
 
-def execute_print_merge_to_pdf(corel_app, template_doc, data_records, output_pdf_path, plate_type="MV"):
+def execute_print_merge_to_pdf(corel_app, data_records, output_pdf_path, template_mv_path, template_mc_path):
     try:
-        print(f"Initializing manual Python merge sequence... \nTemplate Type: {plate_type}")
-
-        # Set unit to cm (4 = cdrCentimeter)
-        template_doc.Unit = 4
-        
-        page1 = template_doc.Pages.Item(1)
         total_records = len(data_records)
-        print(f"Total records to process: {total_records}")
+        print(f"Initializing Master Engine merge. Total records to process: {total_records}")
 
         # check if any data was parsed
         if total_records == 0:
             print("No records found to merge.")
             return False
 
-        print("Duplicating template pages for each record...")
-        
-        # Step 1: Duplicate Page 1 shapes for all required records
-        if total_records > 1:
-            page1.Activate()
-            
-            # Create a ShapeRange of all non-guideline shapes to prevent COM clipboard crashes
-            sr = corel_app.CreateShapeRange()
-
-            # iterate through each shape on page 1
-            for i in range(1, page1.Shapes.Count + 1):
-                s = page1.Shapes.Item(i)
-                if s.Type != 9: # 9 is cdrGuidelineShape
-                    sr.Add(s)
-            
-            sr.Copy()
-            
-            # duplicate page 1 for each record
-            for target_idx in range(2, total_records + 1):
-                template_doc.AddPages(1)
-                template_doc.Pages.Item(target_idx).Activate()
-                template_doc.ActiveLayer.Paste()
-
-        print("Pages duplicated. Mapping data to text placeholders...")
+        # Create Master A3 Document
+        print("Creating Master A3 payload layout...")
+        master_doc = corel_app.CreateDocument()
+        master_doc.Unit = 4 # cdrCentimeter
+        master_page = master_doc.Pages.Item(1)
+        master_page.SetSize(42.0, 29.7) # Strictly A3 paper size
 
         # Recursive text substitution function
         def replace_text_in_shapes(shapes, record, p_type):
-            # iterate through each shape on page 1
             for i in range(1, shapes.Count + 1):
                 s = shapes.Item(i)
                 try:
                     if hasattr(s, 'Text') and s.Text:
                         current_text = s.Text.Story.Text
                         
-                        # check plate type and replace text for MV plates
-                        if p_type.  upper() == "MV":
+                        # Apply to MV
+                        if p_type.upper() == "MV":
                             if "MIDDLE" in current_text or "<MIDDLE>" in current_text:
                                 s.Text.Story.Text = record.get("middle", "")
                             elif "IDENTIFIER" in current_text or "<IDENTIFIER>" in current_text:
                                 s.Text.Story.Text = record.get("identifier", "")
                         
-                        # check plate type and replace text for MC plates
+                        # Apply to MC
                         elif p_type.upper() == "MC":
-                            if "MIDDLE" in current_text:
+                            if "MIDDLE" in current_text or "<MIDDLE>" in current_text:
                                 s.Text.Story.Text = record.get("middle", "")
+                            elif "IDENTIFIER" in current_text or "<IDENTIFIER>" in current_text:
+                                s.Text.Story.Text = record.get("identifier", "")
                 except Exception as e:
                     pass
                 
-                # check if shape is a group or powerclip
+                # Recursively check grouped shapes and powerclips
                 try:    
                     if s.Type == 7: # cdrGroupShape
                         replace_text_in_shapes(s.Shapes, record, p_type)
@@ -75,78 +52,89 @@ def execute_print_merge_to_pdf(corel_app, template_doc, data_records, output_pdf
                 except:
                     pass
 
-        # Step 2: Apply the record data to each respective page
-        for p_idx in range(1, total_records + 1):
-            # get the current page and its record data
-            curr_page = template_doc.Pages.Item(p_idx)
-            record_data = data_records[p_idx - 1]   
-            
-            # replace the text in the current page
-            replace_text_in_shapes(curr_page.Shapes, record_data, plate_type)
-            
-            # Record original sizes to calculate shift delta
-            old_width = curr_page.SizeWidth
-            old_height = curr_page.SizeHeight
-            
-            # Step 2b: Apply the size scaling NOW, after all shapes are placed
-            if plate_type.upper() == "MV":
-                new_width = 39.2
-                new_height = 14.2
-            else: # Defaults to MC
-                new_width = 24.0
-                new_height = 14.0
+        # Step 2: Loop over the chunked records array
+        for p_idx, record_data in enumerate(data_records):
+            p_type = record_data.get("type", "MV").upper()
+            template_path = template_mc_path if p_type == "MC" else template_mv_path
+
+            if not os.path.exists(template_path):
+                print(f"Error: Template {template_path} not found.")
+                continue
+
+            # Open target Template safely for extraction
+            print(f"Opening template for Record {p_idx+1}/{total_records} Type: {p_type}")
+            temp_doc = corel_app.OpenDocument(template_path)
+            temp_doc.Unit = 4 # cdrCentimeter
+            temp_page = temp_doc.Pages.Item(1)
+
+            # Replace the text placeholders inside the template BEFORE bounding
+            replace_text_in_shapes(temp_page.Shapes, record_data, p_type)
+
+            # Group all shapes on page to mathematically lock relative structures
+            sr = corel_app.CreateShapeRange()
+            for i in range(1, temp_page.Shapes.Count + 1):
+                s = temp_page.Shapes.Item(i)
+                if s.Type != 9: # Skip guidelines
+                    sr.Add(s)
+
+            if sr.Count > 0:
+                grouped_shape = sr.Group()
+                grouped_shape.Copy() # Push to COM clipboard securely
+
+                # Bring master document to foreground
+                master_doc.Activate()
+                # Paste shape onto A3 master layer
+                pasted_shape = master_doc.ActiveLayer.Paste()
+
+                # Calculate placement logic utilizing Algebraic centering mapping
+                # Base constraints: Corel Y-axis starts bottom-left (0,0) going upwards.
+                cx = pasted_shape.PositionX + (pasted_shape.SizeWidth / 2.0)
+                cy = pasted_shape.PositionY - (pasted_shape.SizeHeight / 2.0)
+
+                target_px = 42.0 / 2.0 # 21.0 - Dead center horizontal
                 
-            curr_page.SetSize(new_width, new_height)
-
-            # Step 2c: Translate the template graphics dynamically to the new cropped center
-            try:
-                sr = corel_app.CreateShapeRange()
-                for i in range(1, curr_page.Shapes.Count + 1):
-                    s = curr_page.Shapes.Item(i)
-                    if s.Type != 9: # Skip guidelines
-                        sr.Add(s)
+                if p_idx == 0:
+                    # Index 0 gets strictly aligned to the TOP half (Top Plate)
+                    target_py = 29.7 * 0.75 
+                else:
+                    # Index 1 gets strictly aligned to the BOTTOM half (Bottom Plate)
+                    target_py = 29.7 * 0.25 
                 
-                if sr.Count > 0:
-                    if plate_type.upper() == "MV":
-                        # NEW MV LOGIC: Mathematically center the shape bounding box into the new page center
-                        cx = sr.PositionX + (sr.SizeWidth / 2.0)
-                        cy = sr.PositionY - (sr.SizeHeight / 2.0)
-                        dx = (new_width / 2.0) - cx
-                        dy = (new_height / 2.0) - cy
-                    else:
-                        # OLD MC LOGIC: Original hardcoded fixed offset calculation (template update still in process)
-                        dx = (new_width / 1.825) - (old_width / 2.0)
-                        dy = (new_height / 2.1) - (old_height / 2.0)
-                        
-                    sr.Move(dx, dy)
-            except Exception as center_ex:
-                print(f"Warning: Could not align shapes on page {p_idx}: {center_ex}")
+                dx = target_px - cx
+                dy = target_py - cy
+                
+                # Perform the transformation delta lock
+                pasted_shape.Move(dx, dy)
+            
+            # Important: Close the original layout template without saving to keep it 100% pristine
+            temp_doc.Dirty = False
+            temp_doc.Close()
 
-        print(f"Data applied successfully. Exporting to {output_pdf_path}")
+        # Step 3: Publish unified payload directly to PDF buffer
+        print(f"Data mapping securely applied to A3 target. Exporting to {output_pdf_path}")
+        master_doc.ClearSelection()
+        
+        pdf_settings = master_doc.PDFSettings
+        pdf_settings.PublishRange = 0 # Export whole doc array silently
+        master_doc.PublishToPDF(output_pdf_path)
+        print("Silenced PDF export achieved.")
 
-        # Deselect all to prevent export engine crash
-        corel_app.ActiveDocument.ClearSelection()
-
-        # Step 3: Publish to PDF
-        pdf_settings = template_doc.PDFSettings
-        pdf_settings.PublishRange = 0 # 0 means export whole doc
-        template_doc.PublishToPDF(output_pdf_path)
-        print("PDF export done.")
-
-        # Step 4: Close without saving to protect the template
-        template_doc.Dirty = False
-        template_doc.Close()
-        print("temporary merge workplace cleared.")
+        # Step 4: Dismantle isolated workplace memory state
+        master_doc.Dirty = False
+        master_doc.Close()
+        print("Master workspace cleared perfectly.")
 
         return True
 
     except Exception as e:
+        print(f"Print Merge Error: {e}")
         import traceback
         traceback.print_exc()
-        print(f"Print Merge Error: {e}")
         try:
-            template_doc.Dirty = False
-            template_doc.Close()
+            # Fallback failsafes
+            if master_doc:
+                master_doc.Dirty = False
+                master_doc.Close()
         except:
             pass
         return False

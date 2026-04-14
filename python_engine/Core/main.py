@@ -1,6 +1,8 @@
 import os
 import time
 import sys
+import glob
+from datetime import datetime
 from data_processor import parse_input_data
 from corel_engine import CorelAutomator
 from print_handler import execute_print_merge_to_pdf
@@ -15,72 +17,123 @@ PLATE_TEMPLATE_DIR = os.path.join(ROOT_DIR, "CorelDRAW Templates", "Main Templat
 
 # Dynamic routing to the correct folders
 INPUT_TXT_PATH = os.path.join(FLUTTER_ROOT_DIR, "csv", "flutter_user_input.txt")
-
-# Path for templates of each plates
 TEMPLATE_MV_PATH = os.path.join(PLATE_TEMPLATE_DIR, "MV_PLATE.cdr")
 TEMPLATE_MC_PATH = os.path.join(PLATE_TEMPLATE_DIR, "MC_PLATE.cdr")
+
+# Generate Session ID (yyyyMMdd_HHmm)
+SESSION_ID = datetime.now().strftime("%Y%m%d_%H%M")
+LOGS_DIR = os.path.join(ROOT_DIR, "Logs")
+if not os.path.exists(LOGS_DIR):
+    os.makedirs(LOGS_DIR)
+
+class ConsoleLogger:
+    def __init__(self, log_path, session_id):
+        self.terminal = sys.stdout
+        self.log_path = log_path
+        self.session_id = session_id
+        
+        # Write a session start marker
+        with open(self.log_path, "a", encoding="utf-8") as f:
+            f.write(f"\n\n--- [SESSION START: {session_id}] ---\n")
+
+    def write(self, message):
+        self.terminal.write(message)
+        try:
+            with open(self.log_path, "a", encoding="utf-8") as f:
+                f.write(message)
+        except:
+            pass
+
+    def flush(self):
+        self.terminal.flush()
+
+# Redirect stdout to pipe terminal logs to daily_log.txt
+sys.stdout = ConsoleLogger(os.path.join(LOGS_DIR, "daily_log.txt"), SESSION_ID)
+
+def cleanup_old_sessions(directories, current_session):
+    """
+    Purges ghost artifact files from previous instances locking them to maintain UI performance.
+    """
+    print(f"Running cleanup. Protecting current session: {current_session}")
+    for directory in directories:
+        if not os.path.exists(directory):
+            continue
+        for file in glob.glob(os.path.join(directory, "*")):
+            filename = os.path.basename(file)
+            if current_session not in filename:
+                try:
+                    # Ignore .gitignores if present
+                    if not filename.startswith("."): 
+                        os.remove(file)
+                        print(f"Purged old ghost file: {filename}")
+                except Exception as e:
+                    print(f"Warning: Could not delete {filename}. {e}")
+
 def run_pipeline():
-    print("--- Starting LTO Automation Pipeline ---")
+    print(f"--- Starting LTO Automation Batch (Session {SESSION_ID}) ---")
     
-    # 1. Process the data
-    
+    # 1. Process the data enforcing max batch rules
     data_records = parse_input_data(INPUT_TXT_PATH)
     
     if not data_records:
         print("Pipeline stopped: Data processing failed.")
         return
 
-    # Determine type from the first record (or fallback to sys args/default)
-    plate_type = "MV"
-    if data_records and data_records[0].get("type"):
-        pt = data_records[0]["type"].upper()
-        if pt in ["MC", "MV"]:
-            plate_type = pt
-    # Also allow passing it as an arg just in case
-    if len(sys.argv) > 1 and sys.argv[1].upper() in ["MV", "MC"]:
-        plate_type = sys.argv[1].upper()
-
-    print(f"Determined Plate Type: {plate_type}")
-    template_path = TEMPLATE_MV_PATH if plate_type == "MV" else TEMPLATE_MC_PATH
-    
-    # Define outputs directory for clean architecture
+    # 2. Cleanup temp files in Outputs and temp_previews not belonging to this active session
     outputs_dir = os.path.join(FLUTTER_ROOT_DIR, "Outputs")
-    if not os.path.exists(outputs_dir):
-        os.makedirs(outputs_dir)
+    temp_previews_dir = os.path.join(FLUTTER_ROOT_DIR, "temp_previews")
+    if not os.path.exists(outputs_dir): os.makedirs(outputs_dir)
+    if not os.path.exists(temp_previews_dir): os.makedirs(temp_previews_dir)
+    
+    cleanup_old_sessions([outputs_dir, temp_previews_dir], SESSION_ID)
         
-    final_pdf_path = os.path.join(outputs_dir, f"LTO_Batch_Output_{plate_type}.pdf")
+    final_pdf_path = os.path.join(outputs_dir, f"LTO_Batch_{SESSION_ID}.pdf")
 
-    # 2. Initialize the automation engine
+    # 3. Initialize the automation engine natively
     automator = CorelAutomator()
     automator.bypass_trial_screen()
     
-    # 3. Connect and open template
+    # 4. Connect to Corel DRAW securely via headless-compatible approach
     if automator.connect():
-        automator.open_template(template_path)
-        
-        # Prevent locked file crashes by attempting to delete existing output
+        # Prevent locked file crashes by attempting to gently override
         if os.path.exists(final_pdf_path):
             try:
                 os.remove(final_pdf_path)
-                print("Deleted existing batch output file.")
             except Exception as e:
                 print(f"Warning: Could not delete old PDF. Close it if it's open. {e}")
 
-        # 4. Execute manual data merge
-        time.sleep(2)
+        # Atomic Failure Block: Ensures any crash safely releases the COM objects. 
+        # This prevents invisible instances of CorelDRAW from stacking up in Windows Memory 
+        # and creating massive ghost memory leaks, as per user requirement.
+        try:
+            print("Initiating printing logic sequence...")
+            time.sleep(2)
 
-        merge_success = execute_print_merge_to_pdf(
-            automator.corel,
-            automator.doc,
-            data_records,
-            final_pdf_path,
-            plate_type
-        )
+            merge_success = execute_print_merge_to_pdf(
+                automator.corel,
+                data_records,
+                final_pdf_path,
+                TEMPLATE_MV_PATH,
+                TEMPLATE_MC_PATH
+            )
 
-        if merge_success:
-            print("--- pipeline completed successfully ---")
-        else:
-            print ("--- pipeline failed during manual merge ---")
+            if merge_success:
+                print(f"--- Pipeline complete. Preview generated: {final_pdf_path} ---")
+            else:
+                print("--- Pipeline failed during template orchestration ---")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Critical execution error: {e}")
+        finally:
+            # We strictly hunt down and kill hanging documents manually via iterative cleanup
+            try:
+                for i in range(1, automator.corel.Documents.Count + 1):
+                    automator.corel.Documents.Item(i).Dirty = False
+                    automator.corel.Documents.Item(i).Close()
+                print("All orphaned CorelDRAW handles released successfully.")
+            except:
+                pass
 
 if __name__ == "__main__":
     run_pipeline()
