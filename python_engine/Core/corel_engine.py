@@ -10,11 +10,10 @@ class CorelAutomator:
 
     # Trial screen bypass
     def bypass_trial_screen(self):
-        time.sleep(5)
         print("waiting for the trial screen...")
+        time.sleep(5)
         pyautogui.hotkey('alt', 'z')
-        time.sleep(1)
-        print('close successfully clicked')
+        print('Trial screen bypassed')
 
     # Connect to CorelDRAW
     def connect(self):
