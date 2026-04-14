@@ -10,10 +10,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(BASE_DIR)
 FLUTTER_ROOT_DIR = os.path.dirname(ROOT_DIR)
 
+# Subfolder for Templates
+PLATE_TEMPLATE_DIR = os.path.join(ROOT_DIR, "CorelDRAW Templates", "Main Templates")
+
 # Dynamic routing to the correct folders
 INPUT_TXT_PATH = os.path.join(FLUTTER_ROOT_DIR, "csv", "flutter_user_input.txt")
-TEMPLATE_MV_PATH = os.path.join(ROOT_DIR, "CorelDRAW Templates", "MV_PLATE.cdr")
-TEMPLATE_MC_PATH = os.path.join(ROOT_DIR, "CorelDRAW Templates", "Protocol Plates MC.cdr")
+
+# Path for templates of each plates
+TEMPLATE_MV_PATH = os.path.join(PLATE_TEMPLATE_DIR, "MV_PLATE.cdr")
+TEMPLATE_MC_PATH = os.path.join(PLATE_TEMPLATE_DIR, "MC_PLATE.cdr")
 def run_pipeline():
     print("--- Starting LTO Automation Pipeline ---")
     

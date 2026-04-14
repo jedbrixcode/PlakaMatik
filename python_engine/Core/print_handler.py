@@ -4,7 +4,7 @@ import traceback
 
 def execute_print_merge_to_pdf(corel_app, template_doc, data_records, output_pdf_path, plate_type="MV"):
     try:
-        print(f"Initializing manual Python merge sequence... Template Type: {plate_type}")
+        print(f"Initializing manual Python merge sequence... \nTemplate Type: {plate_type}")
 
         # Set unit to cm (4 = cdrCentimeter)
         template_doc.Unit = 4
@@ -89,22 +89,16 @@ def execute_print_merge_to_pdf(corel_app, template_doc, data_records, output_pdf
             old_height = curr_page.SizeHeight
             
             # Step 2b: Apply the size scaling NOW, after all shapes are placed
-            new_width = 39.2
-            new_height = 14.2
             if plate_type.upper() == "MV":
                 new_width = 39.2
                 new_height = 14.2
-            elif plate_type.upper() == "MC":
+            else: # Defaults to MC
                 new_width = 24.0
                 new_height = 14.0
                 
             curr_page.SetSize(new_width, new_height)
 
             # Step 2c: Translate the template graphics dynamically to the new cropped center
-            # By calculating the fixed offset of the page center shifting relative to bottom-left 0,0
-            dx = (new_width / 1.825) - (old_width / 2.0)
-            dy = (new_height / 2.1) - (old_height / 2.0)
-            
             try:
                 sr = corel_app.CreateShapeRange()
                 for i in range(1, curr_page.Shapes.Count + 1):
@@ -113,6 +107,17 @@ def execute_print_merge_to_pdf(corel_app, template_doc, data_records, output_pdf
                         sr.Add(s)
                 
                 if sr.Count > 0:
+                    if plate_type.upper() == "MV":
+                        # NEW MV LOGIC: Mathematically center the shape bounding box into the new page center
+                        cx = sr.PositionX + (sr.SizeWidth / 2.0)
+                        cy = sr.PositionY - (sr.SizeHeight / 2.0)
+                        dx = (new_width / 2.0) - cx
+                        dy = (new_height / 2.0) - cy
+                    else:
+                        # OLD MC LOGIC: Original hardcoded fixed offset calculation (template update still in process)
+                        dx = (new_width / 1.825) - (old_width / 2.0)
+                        dy = (new_height / 2.1) - (old_height / 2.0)
+                        
                     sr.Move(dx, dy)
             except Exception as center_ex:
                 print(f"Warning: Could not align shapes on page {p_idx}: {center_ex}")
