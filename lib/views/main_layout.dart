@@ -70,7 +70,7 @@ class MainLayout extends StatelessWidget {
                 onPressed: () async {
                   final String dir = Directory.current.path;
                   final pythonScript = '$dir/python_engine/Core/main.py';
-                  print("Triggering Manual Python Debugging...");
+                  print("Triggering Manual Python Debug Button...");
                   Process.run(
                     'python',
                     [pythonScript],
