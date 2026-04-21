@@ -60,7 +60,7 @@ class MainLayout extends StatelessWidget {
             ),
           ),
 
-          // Translucent Debug Button 
+          // Translucent Debug Button
           Positioned(
             top: 40,
             right: 40,
@@ -70,8 +70,12 @@ class MainLayout extends StatelessWidget {
                 onPressed: () async {
                   final String dir = Directory.current.path;
                   final pythonScript = '$dir/python_engine/Core/main.py';
-                  print("Triggering Manual Python Debug...");
-                  Process.run('python', [pythonScript], workingDirectory: '$dir/python_engine/Core').then((result) {
+                  print("Triggering Manual Python Debugging...");
+                  Process.run(
+                    'python',
+                    [pythonScript],
+                    workingDirectory: '$dir/python_engine/Core',
+                  ).then((result) {
                     print("Python Engine Terminated. Code: ${result.exitCode}");
                     print("Logs Context: ${result.stdout}");
                   });
@@ -81,7 +85,10 @@ class MainLayout extends StatelessWidget {
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.redAccent.shade700,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 15,
+                  ),
                 ),
               ),
             ),
