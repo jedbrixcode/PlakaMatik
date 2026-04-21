@@ -103,19 +103,20 @@ class _MultiplePlateViewState extends State<MultiplePlateView> {
                                   ),
                                 ),
                                 const SizedBox(height: 15),
-                                TextField(
-                                  controller: _idController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Plate Identifier',
-                                    filled: true,
-                                    fillColor: Colors.grey[100],
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide.none,
+                                if (_selectedType == 'MV')
+                                  TextField(
+                                    controller: _idController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Plate Identifier',
+                                      filled: true,
+                                      fillColor: Colors.grey[100],
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide.none,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 15),
+                                if (_selectedType == 'MV') const SizedBox(height: 15),
                                 TextField(
                                   controller: _desigController,
                                   decoration: InputDecoration(
@@ -175,8 +176,11 @@ class _MultiplePlateViewState extends State<MultiplePlateView> {
                                     ),
                                   ),
                                   onPressed: () {
-                                    if (_idController.text.isNotEmpty &&
-                                        _desigController.text.isNotEmpty) {
+                                    bool isValid = _desigController.text.isNotEmpty;
+                                    if (_selectedType == 'MV' && _idController.text.isEmpty) {
+                                      isValid = false;
+                                    }
+                                    if (isValid) {
                                       viewModel.addToQueue(
                                         _idController.text,
                                         _desigController.text,

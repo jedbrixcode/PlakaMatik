@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:path_provider/path_provider.dart';
 
 class SinglePlateView extends StatefulWidget {
   const SinglePlateView({super.key});
@@ -33,8 +35,9 @@ class _SinglePlateViewState extends State<SinglePlateView> {
     });
 
     try {
-      final String projectRoot = Directory.current.path;
-      final file = File('$projectRoot/csv/flutter_user_input.txt');
+      final docsDir = await getApplicationDocumentsDirectory();
+      final plakamaticDir = '${docsDir.path}/PlakaMatik Files';
+      final file = File('$plakamaticDir/csv/flutter_user_input.txt');
 
       if (!await file.parent.exists()) {
         await file.parent.create(recursive: true);
@@ -49,6 +52,7 @@ class _SinglePlateViewState extends State<SinglePlateView> {
       final bytes = [0xEF, 0xBB, 0xBF, ...buffer.toString().codeUnits];
       await file.writeAsBytes(bytes);
 
+      final String projectRoot = Directory.current.path;
       final pythonScript = '$projectRoot/python_engine/Core/main.py';
       final process = await Process.run(
         'python',
@@ -57,9 +61,8 @@ class _SinglePlateViewState extends State<SinglePlateView> {
       ).timeout(const Duration(seconds: 45));
 
       if (process.exitCode == 0) {
-        // Find newest pdf in Outputs since main.py creates its own timestamp lock
         // Find newest PREVIEW pdf in Outputs
-        final outputsDir = Directory('$projectRoot/Outputs');
+        final outputsDir = Directory('$plakamaticDir/Outputs');
         final pdfs = outputsDir
             .listSync()
             .where((f) => f.path.endsWith('_PREVIEW.pdf'))
@@ -220,16 +223,22 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                               const Divider(color: Colors.white24),
                               Expanded(
                                 child: StreamBuilder<String>(
-                                  stream: Stream.periodic(const Duration(milliseconds: 500), (_) {
+                                  stream: Stream.periodic(const Duration(milliseconds: 500), (_) async {
                                     try {
-                                      final file = File('${Directory.current.path}/python_engine/Logs/daily_log.txt');
-                                      if (file.existsSync()) {
-                                        final lines = file.readAsLinesSync();
-                                        return lines.length > 20 ? lines.sublist(lines.length - 20).join('\n') : lines.join('\n');
+                                      final docsDir = await getApplicationDocumentsDirectory();
+                                      final logsDir = Directory('${docsDir.path}/PlakaMatik Files/Logs');
+                                      if (logsDir.existsSync()) {
+                                        final files = logsDir.listSync().where((f) => f.path.endsWith('.txt')).toList();
+                                        if (files.isNotEmpty) {
+                                          files.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+                                          final file = File(files.last.path);
+                                          final lines = file.readAsLinesSync();
+                                          return lines.length > 20 ? lines.sublist(lines.length - 20).join('\n') : lines.join('\n');
+                                        }
                                       }
                                     } catch (e) {}
                                     return "Awaiting logs...";
-                                  }),
+                                  }).asyncMap((event) async => await event),
                                   builder: (context, snapshot) {
                                     return SingleChildScrollView(
                                       reverse: true,
@@ -272,51 +281,40 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                             child: Text("Waiting for operator payload..."),
                           )
                         : Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const Icon(
-                                Icons.check_circle,
-                                color: Colors.green,
-                                size: 80,
-                              ),
-                              const SizedBox(height: 10),
-                              const Text(
-                                "A3 PDF Successfully Generated!",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.all(15),
-                                ),
-                                onPressed: _openPdf,
-                                icon: const Icon(
-                                  Icons.picture_as_pdf,
-                                  color: Colors.red,
-                                ),
-                                label: const Text(
-                                  "Open A3 Evidence in Windows",
-                                ),
-                              ),
-                              const SizedBox(height: 35),
-                              FilledButton.icon(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFF1E3A5F),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 40,
-                                    vertical: 20,
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                                  child: SfPdfViewer.file(
+                                    File(_previewPath!),
+                                    canShowScrollHead: false,
+                                    canShowScrollStatus: false,
                                   ),
                                 ),
-                                onPressed: _printNow,
-                                icon: const Icon(Icons.print),
-                                label: const Text(
-                                  "Confirm & Print 1 Plate to UV",
-                                  style: TextStyle(fontSize: 18),
-                                ),
                               ),
+                              Container(
+                                color: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text("A3 Preview Linked", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                    FilledButton.icon(
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: const Color(0xFF1E3A5F),
+                                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                                      ),
+                                      onPressed: _printNow,
+                                      icon: const Icon(Icons.print),
+                                      label: const Text(
+                                        "Confirm & Print",
+                                        style: TextStyle(fontSize: 16),
+                                      ),
+                                    ),
+                                  ]
+                                )
+                              )
                             ],
                           ),
                   ),

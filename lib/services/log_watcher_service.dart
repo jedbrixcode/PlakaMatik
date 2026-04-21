@@ -6,25 +6,29 @@ class LogWatcherService {
   Stream<List<String>> get logStream async* {
     List<String> logs = [];
     final appDocDir = await getApplicationDocumentsDirectory();
-    final logFile = File('${appDocDir.path}/Logs/daily_log.txt');
+    final logDir = Directory('${appDocDir.path}/PlakaMatik Files/Logs');
     
-    if (!(await logFile.parent.exists())) {
-      await logFile.parent.create(recursive: true);
-      await logFile.writeAsString("--- LTO PlakaMatik Log Started ---\n");
+    if (!(await logDir.exists())) {
+      await logDir.create(recursive: true);
     }
     
     while(true) {
-        if(await logFile.exists()) {
-            try {
-                final lines = await logFile.readAsLines();
-                if(lines.length > 100) {
-                     logs = lines.sublist(lines.length - 100).reversed.toList();
-                } else {
-                     logs = lines.reversed.toList();
+        if(await logDir.exists()) {
+            final files = logDir.listSync().where((f) => f.path.endsWith('.txt')).toList();
+            if (files.isNotEmpty) {
+                files.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+                final logFile = File(files.last.path);
+                try {
+                    final lines = await logFile.readAsLines();
+                    if(lines.length > 100) {
+                        logs = lines.sublist(lines.length - 100).reversed.toList();
+                    } else {
+                        logs = lines.reversed.toList();
+                    }
+                    yield logs;
+                } catch(e) {
+                    // Ignore file lock issues while Python writes
                 }
-                yield logs;
-            } catch(e) {
-                // Ignore file lock issues while Python writes
             }
         }
         await Future.delayed(const Duration(milliseconds: 1500));
