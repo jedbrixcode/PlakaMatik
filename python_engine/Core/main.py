@@ -16,13 +16,15 @@ FLUTTER_ROOT_DIR = os.path.dirname(ROOT_DIR)
 PLATE_TEMPLATE_DIR = os.path.join(ROOT_DIR, "CorelDRAW Templates", "Main Templates")
 
 # Dynamic routing to the correct folders
-INPUT_TXT_PATH = os.path.join(FLUTTER_ROOT_DIR, "csv", "flutter_user_input.txt")
+PLAKAMATIK_DIR = os.path.join(os.path.expanduser("~"), "Documents", "PlakaMatik Files")
+INPUT_TXT_PATH = os.path.join(PLAKAMATIK_DIR, "csv", "flutter_user_input.txt")
+
 TEMPLATE_MV_PATH = os.path.join(PLATE_TEMPLATE_DIR, "MV_PLATE.cdr")
 TEMPLATE_MC_PATH = os.path.join(PLATE_TEMPLATE_DIR, "MC_PLATE.cdr")
 
 # Generate Session ID (yyyyMMdd_HHmm)
 SESSION_ID = datetime.now().strftime("%Y%m%d_%H%M")
-LOGS_DIR = os.path.join(ROOT_DIR, "Logs")
+LOGS_DIR = os.path.join(PLAKAMATIK_DIR, "Logs")
 if not os.path.exists(LOGS_DIR):
     os.makedirs(LOGS_DIR)
 
@@ -47,8 +49,8 @@ class ConsoleLogger:
     def flush(self):
         self.terminal.flush()
 
-# Redirect stdout to pipe terminal logs to daily_log.txt
-sys.stdout = ConsoleLogger(os.path.join(LOGS_DIR, "daily_log.txt"), SESSION_ID)
+# Redirect stdout to pipe terminal logs to a session specific file
+sys.stdout = ConsoleLogger(os.path.join(LOGS_DIR, f"Log_{SESSION_ID}.txt"), SESSION_ID)
 
 def cleanup_old_sessions(directories, current_session):
     """
@@ -80,8 +82,8 @@ def run_pipeline():
         return
 
     # 2. Cleanup temp files in Outputs and temp_previews not belonging to this active session
-    outputs_dir = os.path.join(FLUTTER_ROOT_DIR, "Outputs")
-    temp_previews_dir = os.path.join(FLUTTER_ROOT_DIR, "temp_previews")
+    outputs_dir = os.path.join(PLAKAMATIK_DIR, "Outputs")
+    temp_previews_dir = os.path.join(PLAKAMATIK_DIR, "temp_previews")
     if not os.path.exists(outputs_dir): os.makedirs(outputs_dir)
     if not os.path.exists(temp_previews_dir): os.makedirs(temp_previews_dir)
     

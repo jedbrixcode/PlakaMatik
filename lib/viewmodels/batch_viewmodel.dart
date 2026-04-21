@@ -72,9 +72,10 @@ class BatchViewModel extends ChangeNotifier {
     );
 
     try {
-      // Use the strict project root instead of system documents logic
-      final String projectRoot = Directory.current.path;
-      final file = File('$projectRoot/csv/flutter_user_input.txt');
+      // Use path_provider to securely reach PlakaMatik Files mapping
+      final docsDir = await getApplicationDocumentsDirectory();
+      final plakamaticDir = '${docsDir.path}/PlakaMatik Files';
+      final file = File('$plakamaticDir/csv/flutter_user_input.txt');
 
       if (!await file.parent.exists()) {
         await file.parent.create(recursive: true);
@@ -92,11 +93,14 @@ class BatchViewModel extends ChangeNotifier {
       await file.writeAsBytes(bytes);
 
       // We now call the python script natively leveraging the installed compiler
+      final String projectRoot = Directory.current.path;
       final pythonScript = '$projectRoot/python_engine/Core/main.py';
 
-      final process = await Process.run('python', [
-        pythonScript,
-      ], workingDirectory: '$projectRoot/python_engine/Core').timeout(const Duration(seconds: 45));
+      final process = await Process.run(
+        'python',
+        [pythonScript],
+        workingDirectory: '$projectRoot/python_engine/Core',
+      ).timeout(const Duration(seconds: 45));
 
       if (process.exitCode == 0) {
         try {
