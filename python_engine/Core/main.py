@@ -102,9 +102,26 @@ def run_pipeline():
             except Exception as e:
                 print(f"Warning: Could not delete old PDF. Close it if it's open. {e}")
 
-        # Atomic Failure Block: Ensures any crash safely releases the COM objects. 
-        # This prevents invisible instances of CorelDRAW from stacking up in Windows Memory 
-        # and creating massive ghost memory leaks, as per user requirement.
+        # =====================================================================================
+        # ATOMIC FAILURE HANDLING & THE "DRAWBRIDGE" COM AUTOMATION INTERLOCK
+        # =====================================================================================
+        # Why is this so crucial? 
+        # When we connect to CorelDRAW via win32com (COM API), we are opening invisible 
+        # background instances of the CorelDRAW application in your Windows Memory (RAM).
+        # If the Python script crashes during execution (e.g. malformed text, missing template), 
+        # and we DO NOT explicitly close the document and release the COM object application lock,
+        # an invisible "ghost" copy of CorelDRAW will remain running in the background forever.
+        #
+        # If this happens multiple times over a workday, the computer will eventually run out 
+        # of RAM completely, causing the printer and system to crash drastically.
+        # 
+        # By wrapping our entire orchestration logic inside a "try / except / finally" block,
+        # we create an "Atomic" constraint:
+        # 1. TRY: Run the dangerous logic (opening, pasting, exporting).
+        # 2. EXCEPT: If it fails, catch the error (don't let Python just die!).
+        # 3. FINALLY: No matter what happened (SUCCESS or FAILURE), forcefully run the 
+        #    cleanup scripts to kill hanging document handles.
+        # =====================================================================================
         try:
             print("Initiating printing logic sequence...")
             time.sleep(2)
@@ -126,12 +143,19 @@ def run_pipeline():
             traceback.print_exc()
             print(f"Critical execution error: {e}")
         finally:
-            # We strictly hunt down and kill hanging documents manually via iterative cleanup
+            # ---------------------------------------------------------------------------------
+            # THE HARDWARE/MEMORY RESET
+            # ---------------------------------------------------------------------------------
+            # This 'finally' block ensures that even if a "ghost" process crashes one run, 
+            # the memory state is reset. We iterate backwards or forwards through the 
+            # absolute live document count of the CorelDRAW instance and force close them 
+            # without saving (.Dirty = False) so templates aren't destructively overwritten.
+            # ---------------------------------------------------------------------------------
             try:
                 for i in range(1, automator.corel.Documents.Count + 1):
-                    automator.corel.Documents.Item(i).Dirty = False
-                    automator.corel.Documents.Item(i).Close()
-                print("All orphaned CorelDRAW handles released successfully.")
+                    automator.corel.Documents.Item(i).Dirty = False # Prevent Save prompt
+                    automator.corel.Documents.Item(i).Close()       # Kill document handle
+                print("All orphaned CorelDRAW COM handles released safely from memory.")
             except:
                 pass
 

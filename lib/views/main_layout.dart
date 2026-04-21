@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
 import '../viewmodels/navigation_viewmodel.dart';
 import 'multiple_plate_view.dart';
 import 'single_plate_view.dart';
@@ -54,6 +55,33 @@ class MainLayout extends StatelessWidget {
                         return MultiplePlateView();
                     }
                   },
+                ),
+              ),
+            ),
+          ),
+
+          // Translucent Debug Button 
+          Positioned(
+            top: 40,
+            right: 40,
+            child: Opacity(
+              opacity: 0.6,
+              child: FilledButton.icon(
+                onPressed: () async {
+                  final String dir = Directory.current.path;
+                  final pythonScript = '$dir/python_engine/Core/main.py';
+                  print("Triggering Manual Python Debug...");
+                  Process.run('python', [pythonScript], workingDirectory: '$dir/python_engine/Core').then((result) {
+                    print("Python Engine Terminated. Code: ${result.exitCode}");
+                    print("Logs Context: ${result.stdout}");
+                  });
+                },
+                icon: const Icon(Icons.bug_report_outlined),
+                label: const Text('DEBUG: Open Python Engine'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.redAccent.shade700,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                 ),
               ),
             ),
