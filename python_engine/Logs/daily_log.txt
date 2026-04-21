@@ -30,3 +30,165 @@ Silenced PDF export achieved.
 Master workspace cleared perfectly.
 --- Pipeline complete. Preview generated: C:\Users\Window 10\Documents\Jed Internship\Project\plakamatic_flutterui\Outputs\LTO_Batch_20260414_1632.pdf ---
 All orphaned CorelDRAW handles released successfully.
+
+
+--- [SESSION START: 20260421_0843] ---
+--- Starting LTO Automation Batch (Session 20260421_0843) ---
+Reading 8 lines from input...
+Data parsed: 20TH CONGRESS | BAM
+Data parsed: PRESIDENT | PBBM
+Data parsed: SD | A510
+Data parsed: DILG | JVCR
+Data parsed: BIR | G880
+Data parsed: VINTAGE MC 1969 | ----
+Data parsed: VINTAGE VEHICLE | 1977
+Success: Extracted 2 valid records for UV printing chunk.
+Running cleanup. Protecting current session: 20260421_0843
+Purged old ghost file: LTO_Batch_20260414_1632.pdf
+waiting for the trial screen...
+Trial screen bypassed
+attempting to connect to CorelDRAW 2018...
+waiting for UI to stabilize...
+Note: could not set windowstate (UI loading)
+success! corelDraw connection established
+Initiating printing logic sequence...
+Initializing Master Engine merge. Total records to process: 2
+Creating Master A3 payload layout...
+Opening template for Record 1/2 Type: MV
+Print Merge Error: (-2147023170, 'The remote procedure call failed.', None, None)
+--- Pipeline failed during template orchestration ---
+
+
+--- [SESSION START: 20260421_0906] ---
+--- Starting LTO Automation Batch (Session 20260421_0906) ---
+Reading 8 lines from input...
+Data parsed: 20TH CONGRESS | BAM
+Data parsed: PRESIDENT | PBBM
+Data parsed: SD | A510
+Data parsed: DILG | JVCR
+Data parsed: BIR | G880
+Data parsed: VINTAGE MC 1969 | ----
+Data parsed: VINTAGE VEHICLE | 1977
+Success: Extracted 2 valid records for UV printing chunk.
+Running cleanup. Protecting current session: 20260421_0906
+waiting for the trial screen...
+Trial screen bypassed
+attempting to connect to CorelDRAW 2018...
+waiting for UI to stabilize...
+Note: could not set windowstate (UI loading)
+success! corelDraw connection established
+Initiating printing logic sequence...
+Initializing Master Engine merge. Total records to process: 2
+Creating Master A3 payload layout...
+Opening template for Record 1/2 Type: MV
+
+
+--- [SESSION START: 20260421_0907] ---
+--- Starting LTO Automation Batch (Session 20260421_0907) ---
+Reading 2 lines from input...
+Data parsed: MID | BAM2
+Success: Extracted 1 valid records for UV printing chunk.
+Running cleanup. Protecting current session: 20260421_0907
+waiting for the trial screen...
+Print Merge Error: (-2147352567, 'Exception occurred.', (0, 'Shapes', 'Parameter Index is out of range. Its value must be between 1 and 10', None, 0, -2147024809), None)
+--- Pipeline failed during template orchestration ---
+All orphaned CorelDRAW COM handles released safely from memory.
+Trial screen bypassed
+attempting to connect to CorelDRAW 2018...
+waiting for UI to stabilize...
+Note: could not set windowstate (UI loading)
+success! corelDraw connection established
+Initiating printing logic sequence...
+Initializing Master Engine merge. Total records to process: 1
+Creating Master A3 payload layout...
+Opening template for Record 1/1 Type: MV
+Print Merge Error: (-2147352567, 'Exception occurred.', (0, 'Shapes', 'Parameter Index is out of range. Its value must be between 1 and 10', None, 0, -2147024809), None)
+--- Pipeline failed during template orchestration ---
+All orphaned CorelDRAW COM handles released safely from memory.
+
+
+--- [SESSION START: 20260421_0908] ---
+--- Starting LTO Automation Batch (Session 20260421_0908) ---
+Reading 2 lines from input...
+Data parsed: DILG | 123S
+Success: Extracted 1 valid records for UV printing chunk.
+Running cleanup. Protecting current session: 20260421_0908
+waiting for the trial screen...
+Trial screen bypassed
+attempting to connect to CorelDRAW 2018...
+waiting for UI to stabilize...
+Note: could not set windowstate (UI loading)
+success! corelDraw connection established
+Initiating printing logic sequence...
+Initializing Master Engine merge. Total records to process: 1
+Creating Master A3 payload layout...
+Opening template for Record 1/1 Type: MV
+Print Merge Error: (-2147352567, 'Exception occurred.', (0, 'Shapes', 'Parameter Index is out of range. Its value must be between 1 and 10', None, 0, -2147024809), None)
+--- Pipeline failed during template orchestration ---
+All orphaned CorelDRAW COM handles released safely from memory.
+
+
+--- [SESSION START: 20260421_0910] ---
+--- Starting LTO Automation Batch (Session 20260421_0910) ---
+Reading 2 lines from input...
+Data parsed: ASCAW | 23XD
+Success: Extracted 1 valid records for UV printing chunk.
+Running cleanup. Protecting current session: 20260421_0910
+waiting for the trial screen...
+Trial screen bypassed
+attempting to connect to CorelDRAW 2018...
+waiting for UI to stabilize...
+Note: could not set windowstate (UI loading)
+success! corelDraw connection established
+Initiating printing logic sequence...
+Initializing Master Engine merge. Total records to process: 1
+Creating Master A3 payload layout...
+Opening template for Record 1/1 Type: MV
+Print Merge Error: (-2147352567, 'Exception occurred.', (0, 'Shapes', 'Parameter Index is out of range. Its value must be between 1 and 10', None, 0, -2147024809), None)
+--- Pipeline failed during template orchestration ---
+All orphaned CorelDRAW COM handles released safely from memory.
+
+
+--- [SESSION START: 20260421_0921] ---
+--- Starting LTO Automation Batch (Session 20260421_0921) ---
+Reading 2 lines from input...
+Data parsed: ASCAW | 23XD
+Success: Extracted 1 valid records for UV printing chunk.
+Running cleanup. Protecting current session: 20260421_0921
+waiting for the trial screen...
+Trial screen bypassed
+attempting to connect to CorelDRAW 2018...
+waiting for UI to stabilize...
+Note: could not set windowstate (UI loading)
+success! corelDraw connection established
+Initiating printing logic sequence...
+Initializing Master Engine merge. Total records to process: 1
+Creating Master A3 payload layout...
+Opening template for Record 1/1 Type: MC
+Print Merge Error: (-2147352567, 'Exception occurred.', (0, 'Shapes', 'Parameter Index is out of range. Its value must be between 1 and 7', None, 0, -2147024809), None)
+--- Pipeline failed during template orchestration ---
+All orphaned CorelDRAW COM handles released safely from memory.
+
+
+--- [SESSION START: 20260421_1058] ---
+--- Starting LTO Automation Batch (Session 20260421_1058) ---
+Reading 2 lines from input...
+Data parsed: VINTAGE MC 1967 | safas
+Success: Extracted 1 valid records for UV printing chunk.
+Running cleanup. Protecting current session: 20260421_1058
+waiting for the trial screen...
+Trial screen bypassed
+attempting to connect to CorelDRAW 2018...
+waiting for UI to stabilize...
+Note: could not set windowstate (UI loading)
+success! corelDraw connection established
+Initiating printing logic sequence...
+Initializing Master Engine merge. Total records to process: 1
+Creating Master A3 payload layout...
+Opening template for Record 1/1 Type: MC
+Data mapping securely applied. Exporting VERIFICATION PREVIEW...
+Exporting PRINT-READY PAYLOAD...
+Silenced PDF exports achieved flawlessly.
+Master workspace cleared perfectly.
+--- Pipeline complete. Preview generated: C:\Users\Window 10\Documents\Jed Internship\Project\plakamatic_flutterui\Outputs\LTO_Batch_20260421_1058.pdf ---
+All orphaned CorelDRAW COM handles released safely from memory.

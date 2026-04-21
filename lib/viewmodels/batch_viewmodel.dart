@@ -72,26 +72,31 @@ class BatchViewModel extends ChangeNotifier {
     );
 
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/csv/flutter_user_input.txt');
+      // Use the strict project root instead of system documents logic
+      final String projectRoot = Directory.current.path;
+      final file = File('$projectRoot/csv/flutter_user_input.txt');
 
       if (!await file.parent.exists()) {
         await file.parent.create(recursive: true);
       }
 
       StringBuffer buffer = StringBuffer();
+      // Write the explicit header so data_processor.py processes properly
+      buffer.writeln('MIDDLE    IDENTIFIER    TYPE');
       for (var plate in currentChunk) {
         buffer.writeln(plate.toPythonPayload());
       }
 
+      // utf-8-sig encoding for Philippine 'Ñ' parsing correctly in COM
       final bytes = [0xEF, 0xBB, 0xBF, ...utf8.encode(buffer.toString())];
       await file.writeAsBytes(bytes);
 
-      final executablePath = '${dir.path}/backend/backend_orchestrator.exe';
+      // We now call the python script natively leveraging the installed compiler
+      final pythonScript = '$projectRoot/python_engine/Core/main.py';
 
-      final process = await Process.run(executablePath, [
-        '--session-id=${cleanupService.currentSessionId}',
-      ]).timeout(const Duration(seconds: 45));
+      final process = await Process.run('python', [
+        pythonScript,
+      ], workingDirectory: '$projectRoot/python_engine/Core').timeout(const Duration(seconds: 45));
 
       if (process.exitCode == 0) {
         try {
