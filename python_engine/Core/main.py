@@ -3,6 +3,7 @@ import time
 
 # Custom Modules
 import config
+import engine_logger
 from data_processor import parse_input_data
 from corel_engine import CorelAutomator
 from print_handler import execute_print_merge_to_pdf
@@ -12,30 +13,9 @@ init_logger(config.SESSION_ID, config.LOGS_DIR)
 
 # Generate Session ID (yyyyMMdd_HHmm)
 SESSION_ID = datetime.now().strftime("%Y%m%d_%H%M")
-LOGS_DIR = os.path.join(PLAKAMATIK_DIR, "Logs")
+LOGS_DIR = os.path.join(config.PLAKAMATIK_DIR, "Logs")
 if not os.path.exists(LOGS_DIR):
     os.makedirs(LOGS_DIR)
-
-class ConsoleLogger:
-    def __init__(self, log_path, session_id):
-        self.terminal = sys.stdout
-        self.log_path = log_path
-        self.session_id = session_id
-        
-        # Write a session start marker
-        with open(self.log_path, "a", encoding="utf-8") as f:
-            f.write(f"\n\n--- [SESSION START: {session_id}] ---\n")
-
-    def write(self, message):
-        self.terminal.write(message)
-        try:
-            with open(self.log_path, "a", encoding="utf-8") as f:
-                f.write(message)
-        except:
-            pass
-
-    def flush(self):
-        self.terminal.flush()
 
 # Redirect stdout to pipe terminal logs to a session specific file
 sys.stdout = ConsoleLogger(os.path.join(LOGS_DIR, f"Log_{SESSION_ID}.txt"), SESSION_ID)
