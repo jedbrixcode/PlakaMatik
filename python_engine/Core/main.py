@@ -3,41 +3,14 @@ import time
 
 # Custom Modules
 import config
-import engine_logger
+from engine_logger import init_logger
 from data_processor import parse_input_data
 from corel_engine import CorelAutomator
 from print_handler import execute_print_merge_to_pdf
+from session_manager import cleanup_old_sessions
 
 # Initialize Logging
 init_logger(config.SESSION_ID, config.LOGS_DIR)
-
-# Generate Session ID (yyyyMMdd_HHmm)
-SESSION_ID = datetime.now().strftime("%Y%m%d_%H%M")
-LOGS_DIR = os.path.join(config.PLAKAMATIK_DIR, "Logs")
-if not os.path.exists(LOGS_DIR):
-    os.makedirs(LOGS_DIR)
-
-# Redirect stdout to pipe terminal logs to a session specific file
-sys.stdout = ConsoleLogger(os.path.join(LOGS_DIR, f"Log_{SESSION_ID}.txt"), SESSION_ID)
-
-def cleanup_old_sessions(directories, current_session):
-    """
-    Purges ghost artifact files from previous instances locking them to maintain UI performance.
-    """
-    print(f"Running cleanup. Protecting current session: {current_session}")
-    for directory in directories:
-        if not os.path.exists(directory):
-            continue
-        for file in glob.glob(os.path.join(directory, "*")):
-            filename = os.path.basename(file)
-            if current_session not in filename:
-                try:
-                    # Ignore .gitignores if present
-                    if not filename.startswith("."): 
-                        os.remove(file)
-                        print(f"Purged old ghost file: {filename}")
-                except Exception as e:
-                    print(f"Warning: Could not delete {filename}. {e}")
 
 def run_pipeline():
     print(f"--- Starting LTO Automation Batch (Session {config.SESSION_ID}) ---")
@@ -50,14 +23,9 @@ def run_pipeline():
         return
 
     # 2. Cleanup temp files in Outputs and temp_previews not belonging to this active session
-    outputs_dir = os.path.join(config.PLAKAMATIK_DIR, "Outputs")
-    temp_previews_dir = os.path.join(config.PLAKAMATIK_DIR, "temp_previews")
-    if not os.path.exists(outputs_dir): os.makedirs(outputs_dir)
-    if not os.path.exists(temp_previews_dir): os.makedirs(temp_previews_dir)
-    
-    cleanup_old_sessions([outputs_dir, temp_previews_dir], SESSION_ID)
+    cleanup_old_sessions([config.OUTPUTS_DIR, config.TEMP_PREVIEWS_DIR], config.SESSION_ID)
         
-    final_pdf_path = os.path.join(outputs_dir, f"LTO_Batch_{SESSION_ID}.pdf")
+    final_pdf_path = os.path.join(config.OUTPUTS_DIR, f"LTO_Batch_{config.SESSION_ID}.pdf")
 
     # 3. Initialize the automation engine natively
     automator = CorelAutomator()
@@ -75,20 +43,13 @@ def run_pipeline():
         # =====================================================================================
         # ATOMIC FAILURE HANDLING & THE "DRAWBRIDGE" COM AUTOMATION INTERLOCK
         # =====================================================================================
-        # Why is this so crucial? 
-        # When we connect to CorelDRAW via win32com (COM API), we are opening invisible 
-        # background instances of the CorelDRAW application in your Windows Memory (RAM).
-        # If the Python script crashes during execution (e.g. malformed text, missing template), 
-        # and we DO NOT explicitly close the document and release the COM object application lock,
-        # an invisible "ghost" copy of CorelDRAW will remain running in the background forever.
+        # Properly releasing the COM object in a finally block ensures that background CorelDRAW 
+        # instances are terminated even if a crash occurs, preventing "ghost" processes from 
+        # consuming all system RAM and eventually crashing the entire machine.
         #
-        # If this happens multiple times over a workday, the computer will eventually run out 
-        # of RAM completely, causing the printer and system to crash drastically.
-        # 
-        # By wrapping our entire orchestration logic inside a "try / except / finally" block,
-        # we create an "Atomic" constraint:
-        # 1. TRY: Run the dangerous logic (opening, pasting, exporting).
-        # 2. EXCEPT: If it fails, catch the error (don't let Python just die!).
+        # Wrapping entire orchestration logic inside a "try / except / finally" block,
+        # 1. TRY: Run the dangerous logic.
+        # 2. EXCEPT: If it fails, catch the error.
         # 3. FINALLY: No matter what happened (SUCCESS or FAILURE), forcefully run the 
         #    cleanup scripts to kill hanging document handles.
         # =====================================================================================
@@ -116,10 +77,9 @@ def run_pipeline():
             # ---------------------------------------------------------------------------------
             # THE HARDWARE/MEMORY RESET
             # ---------------------------------------------------------------------------------
-            # This 'finally' block ensures that even if a "ghost" process crashes one run, 
-            # the memory state is reset. We iterate backwards or forwards through the 
-            # absolute live document count of the CorelDRAW instance and force close them 
-            # without saving (.Dirty = False) so templates aren't destructively overwritten.
+            # The finally block serves as a fail-safe mechanism that prevents memory leaks by 
+            # forcefully closing all active CorelDRAW documents without saving, ensuring that 
+            # crashed or "ghost" processes are cleared and templates remain unaltered.
             # ---------------------------------------------------------------------------------
             try:
                 for i in range(1, automator.corel.Documents.Count + 1):
