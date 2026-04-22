@@ -3,24 +3,12 @@ import time
 
 # Custom Modules
 import config
+from data_processor import parse_input_data
+from corel_engine import CorelAutomator
+from print_handler import execute_print_merge_to_pdf
 
 # Initialize Logging
 init_logger(config.SESSION_ID, config.LOGS_DIR)
-
-# System paths
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(BASE_DIR)
-FLUTTER_ROOT_DIR = os.path.dirname(ROOT_DIR)
-
-# Subfolder for Templates
-PLATE_TEMPLATE_DIR = os.path.join(ROOT_DIR, "CorelDRAW Templates", "Main Templates")
-
-# Dynamic routing to the correct folders
-PLAKAMATIK_DIR = os.path.join(os.path.expanduser("~"), "Documents", "PlakaMatik Files")
-INPUT_TXT_PATH = os.path.join(PLAKAMATIK_DIR, "csv", "flutter_user_input.txt")
-
-TEMPLATE_MV_PATH = os.path.join(PLATE_TEMPLATE_DIR, "MV_PLATE.cdr")
-TEMPLATE_MC_PATH = os.path.join(PLATE_TEMPLATE_DIR, "MC_PLATE.cdr")
 
 # Generate Session ID (yyyyMMdd_HHmm)
 SESSION_ID = datetime.now().strftime("%Y%m%d_%H%M")
@@ -72,18 +60,18 @@ def cleanup_old_sessions(directories, current_session):
                     print(f"Warning: Could not delete {filename}. {e}")
 
 def run_pipeline():
-    print(f"--- Starting LTO Automation Batch (Session {SESSION_ID}) ---")
+    print(f"--- Starting LTO Automation Batch (Session {config.SESSION_ID}) ---")
     
     # 1. Process the data enforcing max batch rules
-    data_records = parse_input_data(INPUT_TXT_PATH)
+    data_records = parse_input_data(config.INPUT_TXT_PATH)
     
     if not data_records:
         print("Pipeline stopped: Data processing failed.")
         return
 
     # 2. Cleanup temp files in Outputs and temp_previews not belonging to this active session
-    outputs_dir = os.path.join(PLAKAMATIK_DIR, "Outputs")
-    temp_previews_dir = os.path.join(PLAKAMATIK_DIR, "temp_previews")
+    outputs_dir = os.path.join(config.PLAKAMATIK_DIR, "Outputs")
+    temp_previews_dir = os.path.join(config.PLAKAMATIK_DIR, "temp_previews")
     if not os.path.exists(outputs_dir): os.makedirs(outputs_dir)
     if not os.path.exists(temp_previews_dir): os.makedirs(temp_previews_dir)
     
@@ -132,8 +120,8 @@ def run_pipeline():
                 automator.corel,
                 data_records,
                 final_pdf_path,
-                TEMPLATE_MV_PATH,
-                TEMPLATE_MC_PATH
+                config.TEMPLATE_MV_PATH,
+                config.TEMPLATE_MC_PATH
             )
 
             if merge_success:
