@@ -21,7 +21,8 @@ class _SinglePlateViewState extends State<SinglePlateView> {
 
   Future<void> _generateSinglePlate() async {
     // Only require identifier if it's an MV plate
-    if (_middleController.text.isEmpty || (_plateType == 'MV' && _identifierController.text.isEmpty)) {
+    if (_middleController.text.isEmpty ||
+        (_plateType == 'MV' && _identifierController.text.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill out all required fields.')),
       );
@@ -70,7 +71,9 @@ class _SinglePlateViewState extends State<SinglePlateView> {
 
         if (pdfs.isNotEmpty) {
           // Sort to get the most recent just in case
-          pdfs.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+          pdfs.sort(
+            (a, b) => a.statSync().modified.compareTo(b.statSync().modified),
+          );
           setState(() {
             _previewPath = pdfs.last.path;
           });
@@ -90,12 +93,6 @@ class _SinglePlateViewState extends State<SinglePlateView> {
       setState(() {
         _isProcessing = false;
       });
-    }
-  }
-
-  void _openPdf() {
-    if (_previewPath != null) {
-      Process.run('explorer', [_previewPath!]);
     }
   }
 
@@ -159,7 +156,8 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                               ),
                             ),
                             const SizedBox(height: 15),
-                            if (_plateType == 'MV') // Hide identifier for MC visually
+                            if (_plateType ==
+                                'MV') // Hide identifier for MC visually
                               TextField(
                                 controller: _identifierController,
                                 decoration: const InputDecoration(
@@ -180,14 +178,17 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                                   child: Text(type),
                                 );
                               }).toList(),
-                              onChanged: (val) => setState(() => _plateType = val!),
+                              onChanged: (val) =>
+                                  setState(() => _plateType = val!),
                             ),
                             const SizedBox(height: 25),
                             SizedBox(
                               width: double.infinity,
                               height: 50,
                               child: ElevatedButton.icon(
-                                onPressed: _isProcessing ? null : _generateSinglePlate,
+                                onPressed: _isProcessing
+                                    ? null
+                                    : _generateSinglePlate,
                                 icon: _isProcessing
                                     ? const SizedBox(
                                         height: 20,
@@ -219,41 +220,77 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text("Python Execution Logs", style: TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.bold)),
+                              const Text(
+                                "Python Execution Logs",
+                                style: TextStyle(
+                                  color: Colors.greenAccent,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               const Divider(color: Colors.white24),
                               Expanded(
                                 child: StreamBuilder<String>(
-                                  stream: Stream.periodic(const Duration(milliseconds: 500), (_) async {
-                                    try {
-                                      final docsDir = await getApplicationDocumentsDirectory();
-                                      final logsDir = Directory('${docsDir.path}/PlakaMatik Files/Logs');
-                                      if (logsDir.existsSync()) {
-                                        final files = logsDir.listSync().where((f) => f.path.endsWith('.txt')).toList();
-                                        if (files.isNotEmpty) {
-                                          files.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
-                                          final file = File(files.last.path);
-                                          final lines = file.readAsLinesSync();
-                                          return lines.length > 20 ? lines.sublist(lines.length - 20).join('\n') : lines.join('\n');
+                                  stream: Stream.periodic(
+                                    const Duration(milliseconds: 500),
+                                    (_) async {
+                                      try {
+                                        final docsDir =
+                                            await getApplicationDocumentsDirectory();
+                                        final logsDir = Directory(
+                                          '${docsDir.path}/PlakaMatik Files/Logs',
+                                        );
+                                        if (logsDir.existsSync()) {
+                                          final files = logsDir
+                                              .listSync()
+                                              .where(
+                                                (f) => f.path.endsWith('.txt'),
+                                              )
+                                              .toList();
+                                          if (files.isNotEmpty) {
+                                            files.sort(
+                                              (a, b) => a
+                                                  .statSync()
+                                                  .modified
+                                                  .compareTo(
+                                                    b.statSync().modified,
+                                                  ),
+                                            );
+                                            final file = File(files.last.path);
+                                            final lines = file
+                                                .readAsLinesSync();
+                                            return lines.length > 20
+                                                ? lines
+                                                      .sublist(
+                                                        lines.length - 20,
+                                                      )
+                                                      .join('\n')
+                                                : lines.join('\n');
+                                          }
                                         }
-                                      }
-                                    } catch (e) {}
-                                    return "Awaiting logs...";
-                                  }).asyncMap((event) async => await event),
+                                      } catch (e) {}
+                                      return "Awaiting logs...";
+                                    },
+                                  ).asyncMap((event) async => await event),
                                   builder: (context, snapshot) {
                                     return SingleChildScrollView(
                                       reverse: true,
                                       child: Text(
                                         snapshot.data ?? "Loading...",
-                                        style: const TextStyle(color: Colors.lightGreen, fontFamily: 'monospace', fontSize: 11),
+                                        style: const TextStyle(
+                                          color: Colors.lightGreen,
+                                          fontFamily: 'monospace',
+                                          fontSize: 11,
+                                        ),
                                       ),
                                     );
                                   },
                                 ),
-                              )
+                              ),
                             ],
-                          )
-                        )
-                      )
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -285,7 +322,9 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                             children: [
                               Expanded(
                                 child: ClipRRect(
-                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(15),
+                                  ),
                                   child: SfPdfViewer.file(
                                     File(_previewPath!),
                                     canShowScrollHead: false,
@@ -295,15 +334,30 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                               ),
                               Container(
                                 color: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 15,
+                                ),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text("A3 Preview Linked", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                    const Text(
+                                      "A3 Preview Linked",
+                                      style: TextStyle(
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                     FilledButton.icon(
                                       style: FilledButton.styleFrom(
-                                        backgroundColor: const Color(0xFF1E3A5F),
-                                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                                        backgroundColor: const Color(
+                                          0xFF1E3A5F,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 30,
+                                          vertical: 15,
+                                        ),
                                       ),
                                       onPressed: _printNow,
                                       icon: const Icon(Icons.print),
@@ -312,9 +366,9 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                                         style: TextStyle(fontSize: 16),
                                       ),
                                     ),
-                                  ]
-                                )
-                              )
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
                   ),
