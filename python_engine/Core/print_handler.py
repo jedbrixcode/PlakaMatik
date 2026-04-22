@@ -22,8 +22,11 @@ def execute_print_merge_to_pdf(corel_app, data_records, output_pdf_path, templat
         master_layer_payload = master_page.Layers.Item("Layer 1")
         master_layer_payload.Name = "Payload"
         
-        master_layer_guides = master_page.CreateLayer("Guides")
-        master_layer_guides.Printable = True
+        master_layer_mv_guides = master_page.CreateLayer("MV_Guides")
+        master_layer_mv_guides.Printable = True
+        
+        master_layer_bg = master_page.CreateLayer("Background")
+        master_layer_bg.Printable = False # Never printed, purely for UI previews
 
         # Recursive text substitution function
         def replace_text_in_shapes(shapes, record, p_type):
@@ -74,71 +77,60 @@ def execute_print_merge_to_pdf(corel_app, data_records, output_pdf_path, templat
             replace_text_in_shapes(temp_page.Shapes, record_data, p_type)
 
             # -------------------------------------------------------------
-            # LAYER ISOLATION LOGIC 
+            # DYNAMIC LAYER ISOLATION LOGIC 
             # -------------------------------------------------------------
-            # Extract Text Payload (Layer 1)
-            sr_payload = corel_app.CreateShapeRange()
-            try:
-                layer_1 = temp_page.Layers.Item("Layer 1")
-                for i in range(1, layer_1.Shapes.Count + 1):
-                    s = layer_1.Shapes.Item(i)
-                    if s.Type != 9:
-                        sr_payload.Add(s)
-            except Exception as le:
-                    print(f"Warning: Could not fetch Layer 1 from template: {le}")
-
             dx = 0.0
             dy = 0.0
-
-            if sr_payload.Count > 0:
-                grouped_payload = sr_payload.Group()
-                grouped_payload.Copy() 
-                time.sleep(0.5) 
-
-                master_doc.Activate()
-                master_layer_payload.Activate()
-                pasted_payload = master_layer_payload.Paste()
-                time.sleep(0.5) 
-
-                cx = pasted_payload.PositionX + (pasted_payload.SizeWidth / 2.0)
-                cy = pasted_payload.PositionY - (pasted_payload.SizeHeight / 2.0)
-
-                target_px = 42.0 / 2.0 
-                if total_records == 1:
-                    target_py = 29.7 / 2.0 
-                else:
-                    target_py = 29.7 * 0.75 if p_idx == 0 else 29.7 * 0.25 
-                
-                dx = target_px - cx
-                dy = target_py - cy
-                
-                pasted_payload.Move(dx, dy)
-
-            # Extract Visual Template Outlines (Guides)
-            sr_guides = corel_app.CreateShapeRange()
-            try:
-                layer_guides = temp_page.Layers.Item("Guides")
-                for i in range(1, layer_guides.Shapes.Count + 1):
-                    s = layer_guides.Shapes.Item(i)
-                    if s.Type != 9:
-                        sr_guides.Add(s)
-            except Exception as le:
-                    print(f"Warning: Could not fetch Guides from template: {le}")
             
-            if sr_guides.Count > 0:
-                grouped_guides = sr_guides.Group()
-                grouped_guides.Copy()
-                time.sleep(0.5)
+            for layer_idx in range(1, temp_page.Layers.Count + 1):
+                temp_layer = temp_page.Layers.Item(layer_idx)
+                l_name = temp_layer.Name.upper()
                 
-                master_doc.Activate()
-                master_layer_guides.Activate()
-                pasted_guides = master_layer_guides.Paste()
-                time.sleep(0.5)
-                
-                # Lock visual guides mathematically to the exact same position as payload
-                pasted_guides.Move(dx, dy)
-                
-            time.sleep(0.5)
+                sr = corel_app.CreateShapeRange()
+                try:
+                    for i in range(1, temp_layer.Shapes.Count + 1):
+                        s = temp_layer.Shapes.Item(i)
+                        if s.Type != 9:
+                            sr.Add(s)
+                except Exception as le:
+                    print(f"Warning: Could not fetch layer {l_name}: {le}")
+                    continue
+
+                if sr.Count > 0:
+                    try:
+                        grouped = sr.Group()
+                        grouped.Copy()
+                    except:
+                        # Fallback if only 1 object exists
+                        sr.Copy()
+                    
+                    time.sleep(0.5) 
+                    master_doc.Activate()
+                    
+                    if l_name == "LAYER 1" or l_name == "PAYLOAD":
+                        master_layer_payload.Activate()
+                    elif l_name == "GUIDES" and p_type == "MV":
+                        master_layer_mv_guides.Activate()
+                    else:
+                        # Bitmaps, MC Guides, and custom background layers shifted to Preview-only
+                        master_layer_bg.Activate()
+                        
+                    pasted = master_doc.ActiveLayer.Paste()
+                    time.sleep(0.5) 
+
+                    cx = pasted.PositionX + (pasted.SizeWidth / 2.0)
+                    cy = pasted.PositionY - (pasted.SizeHeight / 2.0)
+
+                    target_px = 42.0 / 2.0 
+                    if total_records == 1:
+                        target_py = 29.7 / 2.0 
+                    else:
+                        target_py = 29.7 * 0.75 if p_idx == 0 else 29.7 * 0.25 
+                    
+                    dx = target_px - cx
+                    dy = target_py - cy
+                    
+                    pasted.Move(dx, dy)
             # Safely close without trashing COM queue
             try:
                 temp_doc.Activate()
@@ -152,18 +144,22 @@ def execute_print_merge_to_pdf(corel_app, data_records, output_pdf_path, templat
         pdf_settings = master_doc.PDFSettings
         pdf_settings.PublishRange = 0 
         
-        # EXPORT 1: The UI Preview PDF (Includes Visible Guides)
+        # EXPORT 1: The UI Preview PDF (Includes Visible Backgrounds & Guides)
         print("Data mapping securely applied. Exporting VERIFICATION PREVIEW...")
-        master_layer_guides.Printable = True
-        master_layer_guides.Visible = True
+        master_layer_bg.Printable = True
+        master_layer_bg.Visible = True
+        master_layer_mv_guides.Printable = True
+        master_layer_mv_guides.Visible = True
         
         preview_pdf_path = output_pdf_path.replace(".pdf", "_PREVIEW.pdf")
         master_doc.PublishToPDF(preview_pdf_path)
         
-        # EXPORT 2: The Physical UV Plate PDF (Naked Payload Only)
+        # EXPORT 2: The Physical UV Plate PDF (Naked Payload & Native Guides)
         print("Exporting PRINT-READY PAYLOAD...")
-        master_layer_guides.Printable = False
-        master_layer_guides.Visible = False
+        master_layer_bg.Printable = False
+        master_layer_bg.Visible = False
+        master_layer_mv_guides.Printable = True
+        master_layer_mv_guides.Visible = True
         
         print_pdf_path = output_pdf_path.replace(".pdf", "_PRINT.pdf")
         master_doc.PublishToPDF(print_pdf_path)

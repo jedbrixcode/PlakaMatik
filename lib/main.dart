@@ -10,10 +10,9 @@ import 'views/main_layout.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  final cleanupService = CleanupService();
-  await cleanupService.initialize();
   await windowManager.ensureInitialized();
+  final cleanupService = CleanupService();
+
 
   WindowOptions windowOptions = const WindowOptions(
     size: Size(1280, 720),

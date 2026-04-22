@@ -4,13 +4,18 @@ import 'package:path_provider/path_provider.dart';
 class CleanupService {
   late String currentSessionId;
 
-  Future<void> initialize() async {
+  CleanupService() {
     final now = DateTime.now();
     currentSessionId =
         "${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}";
+    
+    _performCleanup(); // Fire and forget background deletion lock
+  }
+
+  Future<void> _performCleanup() async {
 
     final appDocDir = await getApplicationDocumentsDirectory();
-    final tempPreviewsPath = '${appDocDir.path}/temp_previews';
+    final tempPreviewsPath = '${appDocDir.path}/PlakaMatik Files/temp_previews';
     
     final tempPreviewsDir = Directory(tempPreviewsPath);
     
