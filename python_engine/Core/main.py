@@ -1,11 +1,11 @@
 import os
 import time
-import sys
-import glob
-from datetime import datetime
-from data_processor import parse_input_data
-from corel_engine import CorelAutomator
-from print_handler import execute_print_merge_to_pdf
+
+# Custom Modules
+import config
+
+# Initialize Logging
+init_logger(config.SESSION_ID, config.LOGS_DIR)
 
 # System paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
