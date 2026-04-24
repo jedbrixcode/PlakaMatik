@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/input_sanitizer.dart';
 import '../services/cleanup_service.dart';
+import '../viewmodels/settings_viewmodel.dart';
 
 class PlateData {
   String identifier;
@@ -54,7 +55,7 @@ class BatchViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> executeNextChunk() async {
+  Future<void> generateNextPreviewChunk(SettingsViewModel settings) async {
     if (currentRunIndex >= printQueue.length) return;
 
     isProcessing = true;
@@ -92,13 +93,16 @@ class BatchViewModel extends ChangeNotifier {
       final bytes = [0xEF, 0xBB, 0xBF, ...utf8.encode(buffer.toString())];
       await file.writeAsBytes(bytes);
 
-      // We now call the python script natively leveraging the installed compiler
       final String projectRoot = Directory.current.path;
       final pythonScript = '$projectRoot/python_engine/Core/main.py';
 
+      List<String> pyArgs = [pythonScript];
+      pyArgs.add(settings.isCmyk ? '--cmyk' : '--rgb');
+      pyArgs.add(settings.isVisibleCorel ? '--visible' : '--hidden');
+
       final process = await Process.run(
         'python',
-        [pythonScript],
+        pyArgs,
         workingDirectory: '$projectRoot/python_engine/Core',
       ).timeout(const Duration(seconds: 45));
 
@@ -147,6 +151,41 @@ class BatchViewModel extends ChangeNotifier {
     } finally {
       isProcessing = false;
       notifyListeners();
+    }
+  }
+
+  Future<bool> dispatchToSpooler(SettingsViewModel settings) async {
+    isProcessing = true;
+    notifyListeners();
+    try {
+      final String projectRoot = Directory.current.path;
+      final pythonScript = '$projectRoot/python_engine/Core/send_to_printer.py';
+
+      String targetPdf =
+          '$projectRoot/PlakaMatik Files/Outputs/LTO_Batch_${cleanupService.currentSessionId}_PRINT.pdf';
+
+      final process = await Process.run(
+        'python',
+        [pythonScript, targetPdf, settings.selectedPrinter, 'multiple'],
+        workingDirectory: '$projectRoot/python_engine/Core',
+      ).timeout(const Duration(seconds: 30));
+
+      if (process.exitCode == 0) {
+        requiresNextRunPrompt = true;
+        isProcessing = false;
+        notifyListeners();
+        return true;
+      } else {
+        errorMessage = 'Spooling Error: ${process.stderr.toString().trim()}';
+        isProcessing = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      errorMessage = 'Hardware Spooler disconnected: $e';
+      isProcessing = false;
+      notifyListeners();
+      return false;
     }
   }
 }

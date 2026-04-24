@@ -1,21 +1,35 @@
 import os
 import time
+import argparse
 
 # Custom Modules
 import config
 from engine_logger import init_logger
 from data_processor import parse_input_data
 from corel_engine import CorelAutomator
-from print_handler import execute_print_merge_to_pdf
+from export_manager import execute_print_merge_to_pdf
 from session_manager import cleanup_old_sessions
+from config_manager import load_config
 
-# Initialize Logging
+def parse_args():
+    # Deprecated by JSON Bridge, retained structurally if needed.
+    parser = argparse.ArgumentParser(description='PlakaMatik Python Export Hand-off Engine')
+    return parser.parse_known_args()[0]
+
+# Initialize Logging (Session ID generated natively)
 init_logger(config.SESSION_ID, config.LOGS_DIR)
 
-def run_pipeline():
+def run_pipeline(args):
     print(f"--- Starting LTO Automation Batch (Session {config.SESSION_ID}) ---")
     
-    # 1. Process the data enforcing max batch rules
+    # 2. JSON Bridge Configuration Integration
+    dynamic_config = load_config()
+    is_cmyk = dynamic_config["COLOR_MODE"].upper() == "CMYK"
+    is_visible = dynamic_config["CORELDRAW_VISIBLE"]
+    global_dx = dynamic_config["GLOBAL_OFFSETS"].get("dx", 0.0)
+    global_dy = dynamic_config["GLOBAL_OFFSETS"].get("dy", 0.0)
+
+    # 3. Process the data enforcing max batch rules
     data_records = parse_input_data(config.INPUT_TXT_PATH)
     
     if not data_records:
@@ -31,9 +45,14 @@ def run_pipeline():
     automator = CorelAutomator()
     automator.bypass_trial_screen()
     
-    # 4. Connect to Corel DRAW securely via headless-compatible approach
+    # 4. Connect to Corel DRAW securely via pipeline
     if automator.connect():
-        # Prevent locked file crashes by attempting to gently override
+        # Override physical hardware visual state globally based on Flutter UI Setting
+        try:
+            automator.corel.Visible = is_visible
+        except Exception as ve:
+            print(f"Hardware bypass warning: Failed setting visibility property: {ve}")
+
         if os.path.exists(final_pdf_path):
             try:
                 os.remove(final_pdf_path)
@@ -43,30 +62,23 @@ def run_pipeline():
         # =====================================================================================
         # ATOMIC FAILURE HANDLING & THE "DRAWBRIDGE" COM AUTOMATION INTERLOCK
         # =====================================================================================
-        # Properly releasing the COM object in a finally block ensures that background CorelDRAW 
-        # instances are terminated even if a crash occurs, preventing "ghost" processes from 
-        # consuming all system RAM and eventually crashing the entire machine.
-        #
-        # Wrapping entire orchestration logic inside a "try / except / finally" block,
-        # 1. TRY: Run the dangerous logic.
-        # 2. EXCEPT: If it fails, catch the error.
-        # 3. FINALLY: No matter what happened (SUCCESS or FAILURE), forcefully run the 
-        #    cleanup scripts to kill hanging document handles.
-        # =====================================================================================
         try:
-            print("Initiating printing logic sequence...")
-            time.sleep(2)
+            print("Initiating PDF Export Stage...")
+            time.sleep(1)
 
             merge_success = execute_print_merge_to_pdf(
                 automator.corel,
                 data_records,
                 final_pdf_path,
                 config.TEMPLATE_MV_PATH,
-                config.TEMPLATE_MC_PATH
+                config.TEMPLATE_MC_PATH,
+                force_cmyk=is_cmyk,
+                global_dx=global_dx,
+                global_dy=global_dy
             )
 
             if merge_success:
-                print(f"--- Pipeline complete. Preview generated: {final_pdf_path} ---")
+                print(f"--- Pipeline complete. Previews generated: {final_pdf_path} ---")
             else:
                 print("--- Pipeline failed during template orchestration ---")
         except Exception as e:
@@ -74,20 +86,15 @@ def run_pipeline():
             traceback.print_exc()
             print(f"Critical execution error: {e}")
         finally:
-            # ---------------------------------------------------------------------------------
-            # THE HARDWARE/MEMORY RESET
-            # ---------------------------------------------------------------------------------
-            # The finally block serves as a fail-safe mechanism that prevents memory leaks by 
-            # forcefully closing all active CorelDRAW documents without saving, ensuring that 
-            # crashed or "ghost" processes are cleared and templates remain unaltered.
-            # ---------------------------------------------------------------------------------
             try:
                 for i in range(1, automator.corel.Documents.Count + 1):
-                    automator.corel.Documents.Item(i).Dirty = False # Prevent Save prompt
-                    automator.corel.Documents.Item(i).Close()       # Kill document handle
+                    automator.corel.Documents.Item(i).Dirty = False 
+                    automator.corel.Documents.Item(i).Close()       
                 print("All orphaned CorelDRAW COM handles released safely from memory.")
             except:
                 pass
 
 if __name__ == "__main__":
-    run_pipeline()
+    args = parse_args()
+    print(f"Starting pipeline with Config -> CMYK:{args.cmyk} VISIBLE:{args.visible}")
+    run_pipeline(args)

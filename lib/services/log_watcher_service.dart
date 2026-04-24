@@ -21,9 +21,9 @@ class LogWatcherService {
                 try {
                     final lines = await logFile.readAsLines();
                     if(lines.length > 100) {
-                        logs = lines.sublist(lines.length - 100).reversed.toList();
+                        logs = lines.sublist(lines.length - 100).toList();
                     } else {
-                        logs = lines.reversed.toList();
+                        logs = lines.toList();
                     }
                     yield logs;
                 } catch(e) {

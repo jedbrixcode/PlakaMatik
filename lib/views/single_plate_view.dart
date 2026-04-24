@@ -3,6 +3,11 @@ import 'dart:io';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:provider/provider.dart';
+import '../viewmodels/settings_viewmodel.dart';
+import '../services/cleanup_service.dart';
+import '../widgets/console_log_widget.dart';
+
 class SinglePlateView extends StatefulWidget {
   const SinglePlateView({super.key});
 
@@ -19,7 +24,7 @@ class _SinglePlateViewState extends State<SinglePlateView> {
   String? _previewPath;
   String? _errorMessage;
 
-  Future<void> _generateSinglePlate() async {
+  Future<void> _generateSinglePlate(SettingsViewModel settings) async {
     // Only require identifier if it's an MV plate
     if (_middleController.text.isEmpty ||
         (_plateType == 'MV' && _identifierController.text.isEmpty)) {
@@ -55,11 +60,18 @@ class _SinglePlateViewState extends State<SinglePlateView> {
 
       final String projectRoot = Directory.current.path;
       final pythonScript = '$projectRoot/python_engine/Core/main.py';
+      
+      List<String> pyArgs = [pythonScript];
+      pyArgs.add(settings.isCmyk ? '--cmyk' : '--rgb');
+      pyArgs.add(settings.isVisibleCorel ? '--visible' : '--hidden');
+
       final process = await Process.run(
         'python',
-        [pythonScript],
+        pyArgs,
         workingDirectory: '$projectRoot/python_engine/Core',
       ).timeout(const Duration(seconds: 45));
+
+      if (!mounted) return;
 
       if (process.exitCode == 0) {
         // Find newest PREVIEW pdf in Outputs
@@ -86,27 +98,61 @@ class _SinglePlateViewState extends State<SinglePlateView> {
         });
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+      }
     } finally {
-      setState(() {
-        _isProcessing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
     }
   }
 
-  void _printNow() {
-    // Stub for actual UV print sending protocol
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Atomic Process Confirmed: Sent to UV Printer Queue!'),
-      ),
-    );
+  Future<void> _printNow(SettingsViewModel settings) async {
+    setState(() {
+      _isProcessing = true;
+    });
+    
+    try {
+      final String projectRoot = Directory.current.path;
+      final pythonScript = '$projectRoot/python_engine/Core/send_to_printer.py';
+      
+      final cleanupService = Provider.of<CleanupService>(context, listen: false);
+      String targetPdf = '$projectRoot/PlakaMatik Files/Outputs/LTO_Batch_${cleanupService.currentSessionId}_PRINT.pdf';
+
+      final process = await Process.run(
+        'python',
+        [pythonScript, targetPdf, settings.selectedPrinter, 'single'],
+        workingDirectory: '$projectRoot/python_engine/Core',
+      ).timeout(const Duration(seconds: 30));
+
+      if (!mounted) return;
+
+      if (process.exitCode == 0) {
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Atomic Process Confirmed: Printed physically!')));
+      } else {
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: ${process.stderr}')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Spooler Error: Python Engine detached.')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+           _isProcessing = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final settings = Provider.of<SettingsViewModel>(context);
     return Padding(
       padding: const EdgeInsets.all(25.0),
       child: Column(
@@ -188,7 +234,7 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                               child: ElevatedButton.icon(
                                 onPressed: _isProcessing
                                     ? null
-                                    : _generateSinglePlate,
+                                    : () => _generateSinglePlate(settings),
                                 icon: _isProcessing
                                     ? const SizedBox(
                                         height: 20,
@@ -210,86 +256,8 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                       ),
                       const SizedBox(height: 15),
                       // LOGS CONTAINER
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(15),
-                          decoration: BoxDecoration(
-                            color: Colors.black87,
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Python Execution Logs",
-                                style: TextStyle(
-                                  color: Colors.greenAccent,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const Divider(color: Colors.white24),
-                              Expanded(
-                                child: StreamBuilder<String>(
-                                  stream: Stream.periodic(
-                                    const Duration(milliseconds: 500),
-                                    (_) async {
-                                      try {
-                                        final docsDir =
-                                            await getApplicationDocumentsDirectory();
-                                        final logsDir = Directory(
-                                          '${docsDir.path}/PlakaMatik Files/Logs',
-                                        );
-                                        if (logsDir.existsSync()) {
-                                          final files = logsDir
-                                              .listSync()
-                                              .where(
-                                                (f) => f.path.endsWith('.txt'),
-                                              )
-                                              .toList();
-                                          if (files.isNotEmpty) {
-                                            files.sort(
-                                              (a, b) => a
-                                                  .statSync()
-                                                  .modified
-                                                  .compareTo(
-                                                    b.statSync().modified,
-                                                  ),
-                                            );
-                                            final file = File(files.last.path);
-                                            final lines = file
-                                                .readAsLinesSync();
-                                            return lines.length > 20
-                                                ? lines
-                                                      .sublist(
-                                                        lines.length - 20,
-                                                      )
-                                                      .join('\n')
-                                                : lines.join('\n');
-                                          }
-                                        }
-                                      } catch (e) {}
-                                      return "Awaiting logs...";
-                                    },
-                                  ).asyncMap((event) async => await event),
-                                  builder: (context, snapshot) {
-                                    return SingleChildScrollView(
-                                      reverse: true,
-                                      child: Text(
-                                        snapshot.data ?? "Loading...",
-                                        style: const TextStyle(
-                                          color: Colors.lightGreen,
-                                          fontFamily: 'monospace',
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      const Expanded(
+                        child: ConsoleLogWidget(),
                       ),
                     ],
                   ),
@@ -359,7 +327,7 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                                           vertical: 15,
                                         ),
                                       ),
-                                      onPressed: _printNow,
+                                      onPressed: () => _printNow(settings),
                                       icon: const Icon(Icons.print),
                                       label: const Text(
                                         "Confirm & Print",

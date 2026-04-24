@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/batch_viewmodel.dart';
-import '../services/log_watcher_service.dart';
+import '../widgets/batch_input_widget.dart';
+import '../widgets/batch_preview_widget.dart';
+import '../widgets/console_log_widget.dart';
+import '../widgets/batch_queue_list.dart';
 
 class MultiplePlateView extends StatefulWidget {
   const MultiplePlateView({super.key});
@@ -11,9 +14,13 @@ class MultiplePlateView extends StatefulWidget {
 }
 
 class _MultiplePlateViewState extends State<MultiplePlateView> {
-  final TextEditingController _idController = TextEditingController();
-  final TextEditingController _desigController = TextEditingController();
-  String _selectedType = 'MV';
+  bool _hardwareInterlockActive = false;
+
+  void _triggerInterlockGateway() {
+    setState(() {
+      _hardwareInterlockActive = true;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,36 +34,23 @@ class _MultiplePlateViewState extends State<MultiplePlateView> {
             scrollDirection: Axis.vertical,
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                minWidth: constraints.maxWidth < 900
-                    ? 900
-                    : constraints.maxWidth,
-                maxWidth: constraints.maxWidth < 900
-                    ? 900
-                    : constraints.maxWidth,
-                minHeight: constraints.maxHeight < 700
-                    ? 700
-                    : constraints.maxHeight,
-                maxHeight: constraints.maxHeight < 700
-                    ? 700
-                    : constraints.maxHeight,
+                minWidth: constraints.maxWidth < 1000 ? 1000 : constraints.maxWidth,
+                maxWidth: constraints.maxWidth < 1000 ? 1000 : constraints.maxWidth,
+                minHeight: constraints.maxHeight < 800 ? 800 : constraints.maxHeight,
+                maxHeight: constraints.maxHeight < 800 ? 800 : constraints.maxHeight,
               ),
               child: Padding(
                 padding: const EdgeInsets.all(25.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Multiple Plate Automation Job',
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF1E3A5F),
-                          ),
-                        ),
-                      ],
+                    const Text(
+                      'Batch Queue Operator Dashboard',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1E3A5F),
+                      ),
                     ),
                     if (viewModel.errorMessage != null)
                       Container(
@@ -84,401 +78,121 @@ class _MultiplePlateViewState extends State<MultiplePlateView> {
                         ),
                       ),
                     const SizedBox(height: 25),
-                    Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Input Section
-                          Expanded(
-                            flex: 4,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                const Text(
-                                  'Plate Data Entry',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                    color: Color(0xFF3B6B88),
-                                  ),
-                                ),
-                                const SizedBox(height: 15),
-                                if (_selectedType == 'MV')
-                                  TextField(
-                                    controller: _idController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Plate Identifier',
-                                      filled: true,
-                                      fillColor: Colors.grey[100],
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                    ),
-                                  ),
-                                if (_selectedType == 'MV') const SizedBox(height: 15),
-                                TextField(
-                                  controller: _desigController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Designation / Region',
-                                    filled: true,
-                                    fillColor: Colors.grey[100],
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 15),
-                                DropdownButtonFormField<String>(
-                                  value: _selectedType,
-                                  decoration: InputDecoration(
-                                    labelText: 'Plate Type',
-                                    filled: true,
-                                    fillColor: Colors.grey[100],
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                  ),
-                                  items: ['MV', 'MC'].map((String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Text(value),
-                                    );
-                                  }).toList(),
-                                  onChanged: (newValue) {
-                                    if (newValue != null)
-                                      setState(() => _selectedType = newValue);
-                                  },
-                                ),
-                                const SizedBox(height: 20),
-                                ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF1E6083),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 20,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  icon: const Icon(
-                                    Icons.add,
-                                    color: Colors.white,
-                                  ),
-                                  label: const Text(
-                                    'Add to Queue',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  onPressed: () {
-                                    bool isValid = _desigController.text.isNotEmpty;
-                                    if (_selectedType == 'MV' && _idController.text.isEmpty) {
-                                      isValid = false;
-                                    }
-                                    if (isValid) {
-                                      viewModel.addToQueue(
-                                        _idController.text,
-                                        _desigController.text,
-                                        _selectedType,
-                                      );
-                                      _idController.clear();
-                                      _desigController.clear();
-                                    }
-                                  },
-                                ),
-                                const SizedBox(height: 10),
-                                // Execution Section
-                                if (viewModel.requiresNextRunPrompt)
-                                  ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.orange.shade600,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 25,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                    icon: const Icon(
-                                      Icons.cleaning_services,
-                                      color: Colors.white,
-                                    ),
-                                    label: const Text(
-                                      'PRINTER BED CLEAR: START NEXT RUN',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1.2,
-                                      ),
-                                    ),
-                                    onPressed: viewModel.executeNextChunk,
-                                  )
-                                else
-                                  ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF4A90E2),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 25,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                    icon: viewModel.isProcessing
-                                        ? const SizedBox(
-                                            width: 24,
-                                            height: 24,
-                                            child: CircularProgressIndicator(
-                                              color: Colors.white,
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : const Icon(
-                                            Icons.print,
-                                            color: Colors.white,
-                                          ),
-                                    label: Text(
-                                      viewModel.isProcessing
-                                          ? 'Processing Chunk...'
-                                          : 'EXECUTE PRINT QUEUE',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1.2,
-                                      ),
-                                    ),
-                                    onPressed:
-                                        viewModel.isProcessing ||
-                                            viewModel.printQueue.isEmpty ||
-                                            viewModel.currentRunIndex >=
-                                                viewModel.printQueue.length
-                                        ? null
-                                        : viewModel.executeNextChunk,
-                                  ),
-                              ],
-                            ),
+                    
+                    // Hardware Interlock Gateway - Overtakes screen when active
+                    if (_hardwareInterlockActive)
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(40),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.orange, width: 4),
                           ),
-                          const SizedBox(width: 10),
-                          // Queue Section
-                          Expanded(
-                            flex: 4,
-                            child: Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF0F4F8),
-                                borderRadius: BorderRadius.circular(15),
-                                border: Border.all(color: Colors.grey.shade300),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                size: 80,
+                                color: Colors.orange,
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text(
-                                        'To Print Queue',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF1E3A5F),
-                                        ),
-                                      ),
-                                      Text(
-                                        '${viewModel.printQueue.length - viewModel.currentRunIndex} remaining',
-                                        style: TextStyle(
-                                          color: Colors.grey.shade600,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
+                              const SizedBox(height: 20),
+                              const Text(
+                                "Run Complete. Please clear the printing bed.",
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                "The hardware queue requires physical bed clearing confirmation before proceeding with the next batch limits.",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 16),
+                              ),
+                              const SizedBox(height: 40),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 50,
+                                    vertical: 25,
                                   ),
-                                  const SizedBox(height: 15),
-                                  Expanded(
-                                    child: ListView.builder(
-                                      itemCount: viewModel.printQueue.length,
-                                      itemBuilder: (context, index) {
-                                        final plate =
-                                            viewModel.printQueue[index];
-                                        final isPrinted =
-                                            index < viewModel.currentRunIndex;
-                                        final isCurrentChunk =
-                                            index >=
-                                                viewModel.currentRunIndex &&
-                                            index <
-                                                viewModel.currentRunIndex +
-                                                    viewModel.platesPerRun;
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    viewModel.requiresNextRunPrompt = false;
+                                    _hardwareInterlockActive = false;
+                                  });
+                                },
+                                child: const Text(
+                                  "BED IS CLEAR",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // ROW 1: [INPUT] | [PREVIEW]
+                            Expanded(
+                              flex: 6,
+                              child: Row(
+                                children: [
+                                  // 1. INPUT PANE
+                                  const Expanded(
+                                    flex: 4,
+                                    child: BatchInputWidget(),
+                                  ),
+                                  const SizedBox(width: 15),
 
-                                        return Card(
-                                          elevation: isCurrentChunk ? 4 : 1,
-                                          color: isPrinted
-                                              ? Colors.green.shade50
-                                              : (isCurrentChunk
-                                                    ? Colors.white
-                                                    : Colors.grey.shade50),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                            side: BorderSide(
-                                              color: isCurrentChunk
-                                                  ? const Color(0xFF4A90E2)
-                                                  : Colors.transparent,
-                                              width: 2,
-                                            ),
-                                          ),
-                                          margin: const EdgeInsets.only(
-                                            bottom: 10,
-                                          ),
-                                          child: ExpansionTile(
-                                            leading: CircleAvatar(
-                                              backgroundColor: isPrinted
-                                                  ? Colors.green
-                                                  : (isCurrentChunk
-                                                        ? const Color(
-                                                            0xFF4A90E2,
-                                                          )
-                                                        : Colors.grey),
-                                              child: Icon(
-                                                isPrinted
-                                                    ? Icons.check
-                                                    : Icons
-                                                          .format_list_numbered,
-                                                color: Colors.white,
-                                                size: 18,
-                                              ),
-                                            ),
-                                            title: Text(
-                                              '${plate.identifier} | ${plate.plateType}',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            subtitle: Text(plate.designation),
-                                            trailing: isPrinted
-                                                ? null
-                                                : IconButton(
-                                                    icon: const Icon(
-                                                      Icons.delete_outline,
-                                                      color: Colors.redAccent,
-                                                    ),
-                                                    onPressed: () => viewModel
-                                                        .removeFromQueue(index),
-                                                  ),
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.all(
-                                                  15,
-                                                ),
-                                                color: Colors.grey.shade100,
-                                                width: double.infinity,
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    const Text(
-                                                      'Technical Data',
-                                                      style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontSize: 12,
-                                                        color: Colors.grey,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 5),
-                                                    Text(
-                                                      'Δx (Offset): ${plate.dxOffset ?? 'Pending'}',
-                                                    ),
-                                                    Text(
-                                                      'Δy (Offset): ${plate.dyOffset ?? 'Pending'}',
-                                                    ),
-                                                    if (plate.previewPath !=
-                                                        null)
-                                                      Text(
-                                                        'Preview: ${plate.previewPath}',
-                                                      ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
+                                  // 2. PREVIEW PANE
+                                  Expanded(
+                                    flex: 5,
+                                    child: BatchPreviewWidget(
+                                      onInterlockTriggered: _triggerInterlockGateway,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    // Audit Log Console
-                    Container(
-                      height: 120,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(
-                            'Audit Log Stream',
-                            style: TextStyle(
-                              color: Colors.greenAccent,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                            const SizedBox(height: 15),
+
+                            // ROW 2: [CONSOLE] | [QUEUE]
+                            const Expanded(
+                              flex: 4,
+                              child: Row(
+                                children: [
+                                  // 3. CONSOLE PANE
+                                  Expanded(
+                                    flex: 4,
+                                    child: ConsoleLogWidget(),
+                                  ),
+                                  SizedBox(width: 15),
+
+                                  // 4. QUEUE PANE
+                                  Expanded(
+                                    flex: 5,
+                                    child: BatchQueueList(),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const Divider(color: Colors.white24),
-                          Expanded(
-                            child: StreamBuilder<List<String>>(
-                              stream: Provider.of<LogWatcherService>(
-                                context,
-                                listen: false,
-                              ).logStream,
-                              builder: (context, snapshot) {
-                                if (!snapshot.hasData ||
-                                    snapshot.data!.isEmpty) {
-                                  return const Text(
-                                    'Waiting for logs...',
-                                    style: TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 12,
-                                      fontFamily: 'Courier',
-                                    ),
-                                  );
-                                }
-                                final logs = snapshot.data!;
-                                return ListView.builder(
-                                  itemCount: logs.length,
-                                  itemBuilder: (context, index) {
-                                    return Text(
-                                      logs[index],
-                                      style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12,
-                                        fontFamily: 'Courier',
-                                      ),
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
