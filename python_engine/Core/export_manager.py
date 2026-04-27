@@ -146,14 +146,64 @@ def execute_print_merge_to_pdf(corel_app, data_records, output_pdf_path, templat
                         replace_text_in_shapes(lyr.Shapes, record_data, p_type)
                         break
 
-                # Copy page into master document
+                # Add a new page to master document and copy all content
                 try:
-                    src_page.Duplicate(master_doc)
+                    import time
+                    new_page = master_doc.Pages.Add()
+                    new_page.SetSize(src_page.SizeWidth, src_page.SizeHeight)
+
+                    # Copy every layer's shapes from src_page → new_page
+                    for li in range(1, src_page.Layers.Count + 1):
+                        src_lyr = src_page.Layers.Item(li)
+                        lyr_name = src_lyr.Name
+
+                        # Skip guideline layers (Type 2)
+                        if src_lyr.Shapes.Count == 0:
+                            continue
+
+                        # Select all shapes on this source layer
+                        sr = corel_app.CreateShapeRange()
+                        for si in range(1, src_lyr.Shapes.Count + 1):
+                            try:
+                                sr.Add(src_lyr.Shapes.Item(si))
+                            except:
+                                pass
+
+                        if sr.Count == 0:
+                            continue
+
+                        # Group, copy, activate target page, paste
+                        try:
+                            grp = sr.Group()
+                            grp.Copy()
+                        except:
+                            sr.Item(1).Copy()
+
+                        time.sleep(0.3)
+                        master_doc.Activate()
+
+                        # Ensure matching layer exists on new_page
+                        dest_lyr = None
+                        try:
+                            dest_lyr = new_page.Layers.Item(lyr_name)
+                        except:
+                            try:
+                                dest_lyr = new_page.CreateLayer(lyr_name)
+                            except:
+                                dest_lyr = new_page.Layers.Item(1)
+                        dest_lyr.Activate()
+
+                        new_page.Activate()
+                        master_doc.ActiveLayer.Paste()
+                        time.sleep(0.3)
+
+                    print(f"  Record {p_idx+1} merged into master doc as Page {master_doc.Pages.Count}.")
                 except Exception as dup_e:
-                    print(f"Warning: Page duplication error for record {p_idx+1}: {dup_e}")
+                    print(f"Warning: Page merge error for record {p_idx+1}: {dup_e}")
 
                 src_doc.Dirty = False
                 src_doc.Close()
+
 
             # Export PREVIEW: all layers visible except Guides
             print("Exporting COMBINED VERIFICATION PREVIEW...")

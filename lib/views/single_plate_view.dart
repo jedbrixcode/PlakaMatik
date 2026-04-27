@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:path_provider/path_provider.dart';
-
 import 'package:provider/provider.dart';
 import '../viewmodels/settings_viewmodel.dart';
-import '../services/cleanup_service.dart';
 import '../widgets/console_log_widget.dart';
+import '../widgets/print_countdown_dialog.dart';
 
 class SinglePlateView extends StatefulWidget {
   const SinglePlateView({super.key});
@@ -24,8 +23,14 @@ class _SinglePlateViewState extends State<SinglePlateView> {
   String? _previewPath;
   String? _errorMessage;
 
+  @override
+  void dispose() {
+    _middleController.dispose();
+    _identifierController.dispose();
+    super.dispose();
+  }
+
   Future<void> _generateSinglePlate(SettingsViewModel settings) async {
-    // Only require identifier if it's an MV plate
     if (_middleController.text.isEmpty ||
         (_plateType == 'MV' && _identifierController.text.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,20 +65,17 @@ class _SinglePlateViewState extends State<SinglePlateView> {
 
       final String projectRoot = Directory.current.path;
       final exePath = '$projectRoot/python_engine/Core/dist/orchestrator.exe';
-      final configPath = '${docsDir.path}/PlakaMatik Files/config.json';
-
-      List<String> pyArgs = ['--config', configPath];
+      final configPath = '$plakamaticDir/config.json';
 
       final process = await Process.run(
         exePath,
-        pyArgs,
+        ['--config', configPath],
         workingDirectory: '$projectRoot/python_engine/Core',
-      ).timeout(const Duration(seconds: 45));
+      ).timeout(const Duration(seconds: 120));
 
       if (!mounted) return;
 
       if (process.exitCode == 0) {
-        // Find newest PREVIEW pdf in Outputs
         final outputsDir = Directory('$plakamaticDir/Outputs');
         final pdfs = outputsDir
             .listSync()
@@ -81,7 +83,6 @@ class _SinglePlateViewState extends State<SinglePlateView> {
             .toList();
 
         if (pdfs.isNotEmpty) {
-          // Sort to get the most recent just in case
           pdfs.sort(
             (a, b) => a.statSync().modified.compareTo(b.statSync().modified),
           );
@@ -89,7 +90,9 @@ class _SinglePlateViewState extends State<SinglePlateView> {
             _previewPath = pdfs.last.path;
           });
         } else {
-          _errorMessage = "Processed, but PREVIEW PDF was not generated.";
+          setState(() {
+            _errorMessage = "Processed, but PREVIEW PDF was not generated.";
+          });
         }
       } else {
         setState(() {
@@ -111,110 +114,10 @@ class _SinglePlateViewState extends State<SinglePlateView> {
     }
   }
 
-  Future<void> _printNow(SettingsViewModel settings) async {
-    setState(() {
-      _isProcessing = true;
-    });
-
-    try {
-      final String projectRoot = Directory.current.path;
-      final pythonScript = '$projectRoot/python_engine/Core/send_to_printer.py';
-
-      final cleanupService = Provider.of<CleanupService>(
-        context,
-        listen: false,
-      );
-      String targetPdf =
-          '$projectRoot/PlakaMatik Files/Outputs/LTO_Batch_${cleanupService.currentSessionId}_PRINT.pdf';
-
-      final process = await Process.run(
-        'python',
-        [pythonScript, targetPdf, settings.selectedPrinter, 'single'],
-        workingDirectory: '$projectRoot/python_engine/Core',
-      ).timeout(const Duration(seconds: 30));
-
-      if (!mounted) return;
-
-      if (process.exitCode == 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Atomic Process Confirmed: Printed physically!'),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed: ${process.stderr}')));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Spooler Error: Python Engine detached.'),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _printPhysicalPlate(SettingsViewModel settings) async {
-    if (_previewPath == null) return;
-    
-    setState(() {
-      _isProcessing = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final printPath = _previewPath!.replaceAll('_PREVIEW.pdf', '_PRINT.pdf');
-      final String projectRoot = Directory.current.path;
-      final exePath = '$projectRoot/python_engine/Core/dist/orchestrator.exe';
-      final docsDir = await getApplicationDocumentsDirectory();
-      final configPath = '${docsDir.path}/PlakaMatik Files/config.json';
-      
-      List<String> pyArgs = ['--config', configPath, '--action', 'spool', '--pdf', printPath];
-
-      final process = await Process.run(
-        exePath,
-        pyArgs,
-        workingDirectory: '$projectRoot/python_engine/Core',
-      ).timeout(const Duration(seconds: 45));
-
-      if (!mounted) return;
-
-      if (process.exitCode == 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Successfully sent to print spooler!')),
-        );
-      } else {
-        setState(() {
-          _errorMessage = "Print Failed: ${process.stderr}\n${process.stdout}";
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = "Exception: $e";
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsViewModel>(context);
+
     return Padding(
       padding: const EdgeInsets.all(25.0),
       child: Column(
@@ -229,17 +132,15 @@ class _SinglePlateViewState extends State<SinglePlateView> {
             ),
           ),
           const SizedBox(height: 20),
-
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // LEFT PANE
+                // ── LEFT PANE ────────────────────────────────────────────
                 Expanded(
                   flex: 1,
                   child: Column(
                     children: [
-                      // INPUT CONTAINER
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -247,60 +148,68 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             const Text(
-                              "Input Parameters",
+                              'Input Parameters',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 20),
-                            TextField(
-                              controller: _middleController,
-                              decoration: const InputDecoration(
-                                labelText: 'Middle Value (e.g. 20TH CONGRESS)',
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                            const SizedBox(height: 15),
-                            if (_plateType ==
-                                'MV') // Hide identifier for MC visually
-                              TextField(
-                                controller: _identifierController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Identifier (e.g. BAM)',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                            if (_plateType == 'MV') const SizedBox(height: 15),
+                            const SizedBox(height: 16),
+                            // Plate type dropdown
                             DropdownButtonFormField<String>(
                               value: _plateType,
                               decoration: const InputDecoration(
                                 labelText: 'Plate Type',
                                 border: OutlineInputBorder(),
+                                isDense: true,
                               ),
-                              items: ['MV', 'MC'].map((String type) {
-                                return DropdownMenuItem<String>(
-                                  value: type,
-                                  child: Text(type),
+                              items: ['MV', 'MC'].map((t) {
+                                return DropdownMenuItem(
+                                  value: t,
+                                  child: Text(t),
                                 );
                               }).toList(),
                               onChanged: (val) =>
                                   setState(() => _plateType = val!),
                             ),
-                            const SizedBox(height: 25),
+                            const SizedBox(height: 12),
+                            // Middle value
+                            TextField(
+                              controller: _middleController,
+                              decoration: const InputDecoration(
+                                labelText: 'Middle Value',
+                                hintText: 'e.g. 20TH CONGRESS',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                            ),
+                            // Identifier — MV only
+                            if (_plateType == 'MV') ...[
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _identifierController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Identifier',
+                                  hintText: 'e.g. BAM',
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 20),
                             SizedBox(
-                              width: double.infinity,
-                              height: 50,
+                              height: 48,
                               child: ElevatedButton.icon(
                                 onPressed: _isProcessing
                                     ? null
                                     : () => _generateSinglePlate(settings),
                                 icon: _isProcessing
                                     ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
+                                        width: 18,
+                                        height: 18,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
                                           color: Colors.white,
@@ -312,8 +221,7 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                                       ? 'GENERATING...'
                                       : 'GENERATE UV PLATE PREVIEW',
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                      fontWeight: FontWeight.bold),
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF4A90E2),
@@ -328,13 +236,12 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                         ),
                       ),
                       const SizedBox(height: 15),
-                      // LOGS CONTAINER
                       const Expanded(child: ConsoleLogWidget()),
                     ],
                   ),
                 ),
                 const SizedBox(width: 25),
-                // RIGHT PANE (PDF PREVIEW)
+                // ── RIGHT PANE (PDF PREVIEW) ──────────────────────────────
                 Expanded(
                   flex: 1,
                   child: Container(
@@ -342,74 +249,7 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                       color: Colors.white.withOpacity(0.9),
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    child: _errorMessage != null
-                        ? Padding(
-                            padding: const EdgeInsets.all(15),
-                            child: SingleChildScrollView(
-                              child: Text(
-                                _errorMessage!,
-                                style: const TextStyle(color: Colors.red),
-                              ),
-                            ),
-                          )
-                        : _previewPath == null
-                        ? const Center(
-                            child: Text("Waiting for operator payload..."),
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                child: ClipRRect(
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(15),
-                                  ),
-                                  child: SfPdfViewer.file(
-                                    File(_previewPath!),
-                                    canShowScrollHead: false,
-                                    canShowScrollStatus: false,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                color: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 15,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text(
-                                      "A3 Preview Linked",
-                                      style: TextStyle(
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    FilledButton.icon(
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF1E3A5F,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 30,
-                                          vertical: 15,
-                                        ),
-                                      ),
-                                      onPressed: () => _printNow(settings),
-                                      icon: const Icon(Icons.print),
-                                      label: const Text(
-                                        "Confirm & Print",
-                                        style: TextStyle(fontSize: 16),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                    child: _buildPreviewPane(settings),
                   ),
                 ),
               ],
@@ -417,6 +257,112 @@ class _SinglePlateViewState extends State<SinglePlateView> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPreviewPane(SettingsViewModel settings) {
+    if (_errorMessage != null) {
+      return Padding(
+        padding: const EdgeInsets.all(15),
+        child: SingleChildScrollView(
+          child: Text(
+            _errorMessage!,
+            style: const TextStyle(color: Colors.red),
+          ),
+        ),
+      );
+    }
+
+    if (_previewPath == null) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inbox_outlined, size: 48, color: Colors.grey),
+            SizedBox(height: 12),
+            Text(
+              'No preview generated yet.',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Fill in the form and press\nGENERATE UV PLATE PREVIEW.',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(15)),
+            child: SfPdfViewer.file(
+              File(_previewPath!),
+              key: ValueKey(_previewPath),
+              canShowScrollHead: false,
+              canShowScrollStatus: false,
+            ),
+          ),
+        ),
+        // ── Bottom bar ───────────────────────────────────────────────────
+        Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFEAF4EA),
+            borderRadius:
+                BorderRadius.vertical(bottom: Radius.circular(15)),
+          ),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Print Preview for Single Plate',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  Text(
+                    'Target: ${settings.selectedPrinter}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E3A5F),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 14),
+                ),
+                onPressed: () => PrintCountdownDialog.show(
+                  context,
+                  settings: settings,
+                  label: 'Single Plate',
+                ),
+                icon: const Icon(Icons.print),
+                label: const Text(
+                  'Confirm & Print',
+                  style: TextStyle(fontSize: 15),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

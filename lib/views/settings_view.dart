@@ -97,13 +97,13 @@ class SettingsView extends StatelessWidget {
                           color: Colors.green,
                         ),
                         _buildActionButtonRow(
-                          'Reset System Defaults',
+                          'Reset JSON',
                           'RESET',
                           () {
                             viewModel.resetJsonHandshake();
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text("System Defaults restored."),
+                                content: Text("JSON reset to defaults."),
                               ),
                             );
                           },

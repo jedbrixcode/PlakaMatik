@@ -1,75 +1,15 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../viewmodels/batch_viewmodel.dart';
 import '../viewmodels/settings_viewmodel.dart';
+import '../widgets/print_countdown_dialog.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class BatchPreviewWidget extends StatelessWidget {
   final VoidCallback onInterlockTriggered;
 
   const BatchPreviewWidget({super.key, required this.onInterlockTriggered});
-
-  void _triggerPrintCountdown(
-    BuildContext context,
-    BatchViewModel viewModel,
-    SettingsViewModel settings,
-  ) {
-    int _counter = 3;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Timer.periodic(const Duration(seconds: 1), (timer) async {
-              if (_counter > 1) {
-                setDialogState(() {
-                  _counter--;
-                });
-              } else {
-                timer.cancel();
-                Navigator.pop(context); // Close countdown
-
-                // Trigger Hardware abstraction
-                bool success = await viewModel.dispatchToSpooler(settings);
-
-                if (success) {
-                  onInterlockTriggered(); // Raise Gateway in parent view
-                }
-              }
-            });
-            return AlertDialog(
-              backgroundColor: const Color(0xFF1E3A5F),
-              title: const Text(
-                "INITIALIZING HARDWARE SPOOLER",
-                style: TextStyle(color: Colors.white),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    "Committing chunks to designated UV plate queue...",
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 30),
-                  Text(
-                    _counter.toString(),
-                    style: const TextStyle(
-                      fontSize: 70,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +78,7 @@ class BatchPreviewWidget extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            "Visual Map Verified",
+                            'Print Preview for Batch Plate',
                             style: TextStyle(
                               color: Colors.green,
                               fontWeight: FontWeight.bold,
@@ -161,10 +101,11 @@ class BatchPreviewWidget extends StatelessWidget {
                             vertical: 15,
                           ),
                         ),
-                        onPressed: () => _triggerPrintCountdown(
+                        onPressed: () => PrintCountdownDialog.show(
                           context,
-                          viewModel,
-                          settings,
+                          settings: settings,
+                          label: 'Batch Plate',
+                          onSuccess: onInterlockTriggered,
                         ),
                         icon: const Icon(Icons.print),
                         label: const Text(

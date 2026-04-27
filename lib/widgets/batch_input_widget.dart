@@ -37,20 +37,33 @@ class _BatchInputWidgetState extends State<BatchInputWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-          const Text(
-            'Plate Data Entry',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              color: Color(0xFF3B6B88),
+            const Text(
+              'Plate Data Entry',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Color(0xFF3B6B88),
+              ),
             ),
-          ),
-          const SizedBox(height: 15),
-          if (_selectedType == 'MV')
+            const SizedBox(height: 15),
+            if (_selectedType == 'MV')
+              TextField(
+                controller: _idController,
+                decoration: InputDecoration(
+                  labelText: 'Plate Identifier',
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            if (_selectedType == 'MV') const SizedBox(height: 15),
             TextField(
-              controller: _idController,
+              controller: _desigController,
               decoration: InputDecoration(
-                labelText: 'Plate Identifier',
+                labelText: 'Designation / Region',
                 filled: true,
                 fillColor: Colors.grey[100],
                 border: OutlineInputBorder(
@@ -59,151 +72,105 @@ class _BatchInputWidgetState extends State<BatchInputWidget> {
                 ),
               ),
             ),
-          if (_selectedType == 'MV') const SizedBox(height: 15),
-          TextField(
-            controller: _desigController,
-            decoration: InputDecoration(
-              labelText: 'Designation / Region',
-              filled: true,
-              fillColor: Colors.grey[100],
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none,
+            const SizedBox(height: 15),
+            DropdownButtonFormField<String>(
+              value: _selectedType,
+              decoration: InputDecoration(
+                labelText: 'Plate Type',
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 15),
-          DropdownButtonFormField<String>(
-            value: _selectedType,
-            decoration: InputDecoration(
-              labelText: 'Plate Type',
-              filled: true,
-              fillColor: Colors.grey[100],
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide.none,
-              ),
-            ),
-            items: ['MV', 'MC']
-                .map(
-                  (String value) => DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  ),
-                )
-                .toList(),
-            onChanged: (newValue) {
-              if (newValue != null) {
-                setState(() => _selectedType = newValue);
-              }
-            },
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1E6083),
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            icon: const Icon(Icons.add, color: Colors.white),
-            label: const Text(
-              'Add to Queue',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            onPressed: () {
-              bool isValid = _desigController.text.isNotEmpty;
-              if (_selectedType == 'MV' && _idController.text.isEmpty) {
-                isValid = false;
-              }
-              if (isValid) {
-                viewModel.addToQueue(
-                  _idController.text,
-                  _desigController.text,
-                  _selectedType,
-                );
-                _idController.clear();
-                // We purposefully leave _desigController uncleared for quick batching
-              }
-            },
-          ),
-          const SizedBox(height: 10),
-          // PREVIEW EXPORT GENERATOR BUTTON
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4A90E2),
-              padding: const EdgeInsets.symmetric(vertical: 25),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            icon: viewModel.isProcessing
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
+              items: ['MV', 'MC']
+                  .map(
+                    (String value) => DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
                     ),
                   )
-                : const Icon(Icons.build, color: Colors.white),
-            label: Text(
-              viewModel.isProcessing
-                  ? 'Generating PDF Engine...'
-                  : 'STAGE 1: GENERATE BATCH PREVIEW',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
+                  .toList(),
+              onChanged: (newValue) {
+                if (newValue != null) {
+                  setState(() => _selectedType = newValue);
+                }
+              },
             ),
-            onPressed:
-                viewModel.isProcessing ||
-                        viewModel.printQueue.isEmpty ||
-                        viewModel.currentRunIndex >= viewModel.printQueue.length
-                    ? null
-                    : () => viewModel.generateNextPreviewChunk(settings),
-          ),
-          const SizedBox(height: 15),
-          // SPOOLER BUTTON
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade600,
-              padding: const EdgeInsets.symmetric(vertical: 25),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E6083),
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-            ),
-            icon: const Icon(Icons.print, color: Colors.white),
-            label: const Text(
-              'STAGE 2: PRINT BATCH',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                'Add to Queue',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
+              onPressed: () {
+                bool isValid = _desigController.text.isNotEmpty;
+                if (_selectedType == 'MV' && _idController.text.isEmpty) {
+                  isValid = false;
+                }
+                if (isValid) {
+                  viewModel.addToQueue(
+                    _idController.text,
+                    _desigController.text,
+                    _selectedType,
+                  );
+                  _idController.clear();
+                  // We purposefully leave _desigController uncleared for quick batching
+                }
+              },
             ),
-            onPressed: viewModel.isProcessing ||
-                    viewModel.printQueue.isEmpty ||
-                    viewModel.currentRunIndex == 0
-                ? null
-                : () async {
-                    bool success = await viewModel.dispatchToSpooler(settings);
-                    if (success && mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Sent to print spooler!')),
-                      );
-                    }
-                  },
-          ),
-        ],
+            const SizedBox(height: 10),
+            // PREVIEW EXPORT GENERATOR BUTTON
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4A90E2),
+                padding: const EdgeInsets.symmetric(vertical: 25),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: viewModel.isProcessing
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.build, color: Colors.white),
+              label: Text(
+                viewModel.isProcessing
+                    ? 'Generating PDF Engine...'
+                    : 'STAGE 1: GENERATE BATCH PREVIEW',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              onPressed:
+                  viewModel.isProcessing ||
+                      viewModel.printQueue.isEmpty ||
+                      viewModel.currentRunIndex >= viewModel.printQueue.length
+                  ? null
+                  : () => viewModel.generateNextPreviewChunk(settings),
+            ),
+          ],
         ),
       ),
     );
