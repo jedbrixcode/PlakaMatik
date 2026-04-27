@@ -15,6 +15,8 @@ from send_to_printer import print_pdf
 
 def parse_args():
     parser = argparse.ArgumentParser(description='PlakaMatik Python Export Hand-off Engine')
+    parser.add_argument('--action', type=str, default='generate', choices=['generate', 'spool'], help='Action to perform')
+    parser.add_argument('--pdf', type=str, default=None, help='Target PDF path for spooling')
     parser.add_argument('--config', type=str, default=None, help='Absolute path to config.json')
     parser.add_argument('--session-id', type=str, default=None, help='Override the session ID timestamp')
     return parser.parse_known_args()[0]
@@ -42,7 +44,7 @@ def run_pipeline(args):
     # 2. Cleanup temp files in Outputs and temp_previews not belonging to this active session
     cleanup_old_sessions([config.OUTPUTS_DIR, config.TEMP_PREVIEWS_DIR], config.SESSION_ID)
         
-    final_pdf_path = os.path.join(config.OUTPUTS_DIR, f"LTO_Batch_{config.SESSION_ID}.pdf")
+    final_pdf_path = os.path.join(config.OUTPUTS_DIR, f"{config.SESSION_ID}.pdf")
 
     # 3. Initialize the automation engine natively
     automator = CorelAutomator()
@@ -81,11 +83,7 @@ def run_pipeline(args):
 
             if merge_success:
                 print(f"--- Pipeline complete. Previews generated: {final_pdf_path} ---")
-                
-                # Internal Spooling via PrintHandler (send_to_printer.py)
-                print_pdf_path = final_pdf_path.replace(".pdf", "_PRINT.pdf")
-                job_type = "multiple" if len(data_records) > 1 else "single"
-                print_pdf(print_pdf_path, printer_name, job_type)
+                print("Waiting for operator to confirm physical print action...")
             else:
                 err_msg = "Pipeline failed during template orchestration."
                 print(f"--- {err_msg} ---")
@@ -115,5 +113,17 @@ if __name__ == "__main__":
     # Re-init logger since session ID might have changed
     init_logger(config.SESSION_ID, config.LOGS_DIR)
         
-    print(f"Starting Unified Orchestrator Pipeline...")
-    run_pipeline(args)
+    if args.action == 'spool':
+        print(f"Orchestrator received manual spool request for: {args.pdf}")
+        if not args.pdf or not os.path.exists(args.pdf):
+            err_msg = f"HALTING: Cannot spool. Invalid or missing PDF path: {args.pdf}"
+            print(err_msg, file=sys.stderr)
+            sys.exit(1)
+            
+        dynamic_config = load_config(args.config)
+        printer_name = dynamic_config.get("PRINTER_NAME", "Microsoft Print to PDF")
+        
+        print_pdf(args.pdf, printer_name, "manual")
+    else:
+        print(f"Starting Unified Orchestrator Pipeline...")
+        run_pipeline(args)

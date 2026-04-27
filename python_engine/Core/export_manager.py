@@ -64,22 +64,22 @@ def execute_print_merge_to_pdf(corel_app, data_records, output_pdf_path, templat
         pdf_settings.PublishRange = 0 
         pdf_settings.ColorMode = 1 # Force RGB Native Rip Space
         
-        # EXPORT 1: The UI Preview PDF (Includes Visible Backgrounds & Guides)
+        # EXPORT 1: The UI Preview PDF (Shows all aesthetic layers, hides guides)
         print("Data mapping securely applied. Exporting VERIFICATION PREVIEW...")
         master_layers['bg'].Printable = True
         master_layers['bg'].Visible = True
-        master_layers['mv_guides'].Printable = True
-        master_layers['mv_guides'].Visible = True
+        master_layers['mv_guides'].Printable = False
+        master_layers['mv_guides'].Visible = False
         
         preview_pdf_path = output_pdf_path.replace(".pdf", "_PREVIEW.pdf")
         master_doc.PublishToPDF(preview_pdf_path)
         
-        # EXPORT 2: The Physical UV Plate PDF (Naked Payload & Native Guides)
+        # EXPORT 2: The Physical UV Plate PDF (Naked Payload ONLY)
         print("Exporting PRINT-READY PAYLOAD...")
         master_layers['bg'].Printable = False
         master_layers['bg'].Visible = False
-        master_layers['mv_guides'].Printable = True
-        master_layers['mv_guides'].Visible = True
+        master_layers['mv_guides'].Printable = False
+        master_layers['mv_guides'].Visible = False
         
         print_pdf_path = output_pdf_path.replace(".pdf", "_PRINT.pdf")
         master_doc.PublishToPDF(print_pdf_path)

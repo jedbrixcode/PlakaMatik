@@ -37,11 +37,11 @@ def compose_and_align_layers(corel_app, master_doc, master_layers, temp_page, p_
             time.sleep(0.5) 
             master_doc.Activate()
             
-            if any(key in l_name for key in ["LAYER 1", "PAYLOAD", "TEXT", "DATA", "MOCK", "ID", "MIDDLE"]):
+            if "PRINT LAYER" in l_name:
                 master_layer_payload.Activate()
-            elif "GUIDES" in l_name and p_type == "MV":
+            elif "GUIDES" in l_name:
                 master_layer_mv_guides.Activate()
-            else:
+            else: # "MOCK LAYER" and any other aesthetic layers
                 master_layer_bg.Activate()
                 
             pasted = master_doc.ActiveLayer.Paste()

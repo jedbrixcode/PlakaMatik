@@ -158,14 +158,15 @@ class BatchViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final String projectRoot = Directory.current.path;
-      final pythonScript = '$projectRoot/python_engine/Core/send_to_printer.py';
-
-      String targetPdf =
-          '$projectRoot/PlakaMatik Files/Outputs/LTO_Batch_${cleanupService.currentSessionId}_PRINT.pdf';
+      final exePath = '$projectRoot/python_engine/Core/dist/orchestrator.exe';
+      final docsDir = await getApplicationDocumentsDirectory();
+      
+      String targetPdf = '${docsDir.path}/PlakaMatik Files/Outputs/${cleanupService.currentSessionId}_PRINT.pdf';
+      final configPath = '${docsDir.path}/PlakaMatik Files/config.json';
 
       final process = await Process.run(
-        'python',
-        [pythonScript, targetPdf, settings.selectedPrinter, 'multiple'],
+        exePath,
+        ['--config', configPath, '--action', 'spool', '--pdf', targetPdf],
         workingDirectory: '$projectRoot/python_engine/Core',
       ).timeout(const Duration(seconds: 30));
 

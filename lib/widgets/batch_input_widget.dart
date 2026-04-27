@@ -169,6 +169,39 @@ class _BatchInputWidgetState extends State<BatchInputWidget> {
                     ? null
                     : () => viewModel.generateNextPreviewChunk(settings),
           ),
+          const SizedBox(height: 15),
+          // SPOOLER BUTTON
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade600,
+              padding: const EdgeInsets.symmetric(vertical: 25),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            icon: const Icon(Icons.print, color: Colors.white),
+            label: const Text(
+              'STAGE 2: PRINT BATCH',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+            onPressed: viewModel.isProcessing ||
+                    viewModel.printQueue.isEmpty ||
+                    viewModel.currentRunIndex == 0
+                ? null
+                : () async {
+                    bool success = await viewModel.dispatchToSpooler(settings);
+                    if (success && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Sent to print spooler!')),
+                      );
+                    }
+                  },
+          ),
         ],
       ),
     );

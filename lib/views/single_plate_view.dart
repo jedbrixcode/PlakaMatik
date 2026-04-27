@@ -163,6 +163,55 @@ class _SinglePlateViewState extends State<SinglePlateView> {
     }
   }
 
+  Future<void> _printPhysicalPlate(SettingsViewModel settings) async {
+    if (_previewPath == null) return;
+    
+    setState(() {
+      _isProcessing = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final printPath = _previewPath!.replaceAll('_PREVIEW.pdf', '_PRINT.pdf');
+      final String projectRoot = Directory.current.path;
+      final exePath = '$projectRoot/python_engine/Core/dist/orchestrator.exe';
+      final docsDir = await getApplicationDocumentsDirectory();
+      final configPath = '${docsDir.path}/PlakaMatik Files/config.json';
+      
+      List<String> pyArgs = ['--config', configPath, '--action', 'spool', '--pdf', printPath];
+
+      final process = await Process.run(
+        exePath,
+        pyArgs,
+        workingDirectory: '$projectRoot/python_engine/Core',
+      ).timeout(const Duration(seconds: 45));
+
+      if (!mounted) return;
+
+      if (process.exitCode == 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Successfully sent to print spooler!')),
+        );
+      } else {
+        setState(() {
+          _errorMessage = "Print Failed: ${process.stderr}\n${process.stdout}";
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = "Exception: $e";
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsViewModel>(context);
@@ -250,17 +299,52 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                                     : () => _generateSinglePlate(settings),
                                 icon: _isProcessing
                                     ? const SizedBox(
-                                        height: 20,
                                         width: 20,
+                                        height: 20,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
+                                          color: Colors.white,
                                         ),
                                       )
-                                    : const Icon(Icons.build),
+                                    : const Icon(Icons.preview),
                                 label: Text(
                                   _isProcessing
-                                      ? 'Generating via CorelDRAW...'
-                                      : 'Generate A3 Preview',
+                                      ? 'GENERATING...'
+                                      : 'GENERATE UV PLATE PREVIEW',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF4A90E2),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton.icon(
+                                onPressed: (_isProcessing || _previewPath == null)
+                                    ? null
+                                    : () => _printPhysicalPlate(settings),
+                                icon: const Icon(Icons.print),
+                                label: const Text(
+                                  'PRINT PHYSICAL PLATE',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green.shade600,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                 ),
                               ),
                             ),
