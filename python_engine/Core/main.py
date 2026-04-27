@@ -21,8 +21,7 @@ def parse_args():
     parser.add_argument('--session-id', type=str, default=None, help='Override the session ID timestamp')
     return parser.parse_known_args()[0]
 
-# Initialize Logging (Session ID generated natively)
-init_logger(config.SESSION_ID, config.LOGS_DIR)
+# Logging is initialized under __main__ to respect session_id overrides
 
 def run_pipeline(args):
     print(f"--- Starting LTO Automation Batch (Session {config.SESSION_ID}) ---")
