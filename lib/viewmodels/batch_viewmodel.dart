@@ -94,14 +94,13 @@ class BatchViewModel extends ChangeNotifier {
       await file.writeAsBytes(bytes);
 
       final String projectRoot = Directory.current.path;
-      final pythonScript = '$projectRoot/python_engine/Core/main.py';
-
-      List<String> pyArgs = [pythonScript];
-      pyArgs.add(settings.isCmyk ? '--cmyk' : '--rgb');
-      pyArgs.add(settings.isVisibleCorel ? '--visible' : '--hidden');
+      final exePath = '$projectRoot/python_engine/Core/dist/orchestrator.exe';
+      final configPath = '${docsDir.path}/PlakaMatik Files/config.json';
+      
+      List<String> pyArgs = ['--config', configPath];
 
       final process = await Process.run(
-        'python',
+        exePath,
         pyArgs,
         workingDirectory: '$projectRoot/python_engine/Core',
       ).timeout(const Duration(seconds: 45));

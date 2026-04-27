@@ -59,14 +59,14 @@ class _SinglePlateViewState extends State<SinglePlateView> {
       await file.writeAsBytes(bytes);
 
       final String projectRoot = Directory.current.path;
-      final pythonScript = '$projectRoot/python_engine/Core/main.py';
+      final exePath = '$projectRoot/python_engine/Core/dist/orchestrator.exe';
+      final docsDir = await getApplicationDocumentsDirectory();
+      final configPath = '${docsDir.path}/PlakaMatik Files/config.json';
       
-      List<String> pyArgs = [pythonScript];
-      pyArgs.add(settings.isCmyk ? '--cmyk' : '--rgb');
-      pyArgs.add(settings.isVisibleCorel ? '--visible' : '--hidden');
+      List<String> pyArgs = ['--config', configPath];
 
       final process = await Process.run(
-        'python',
+        exePath,
         pyArgs,
         workingDirectory: '$projectRoot/python_engine/Core',
       ).timeout(const Duration(seconds: 45));

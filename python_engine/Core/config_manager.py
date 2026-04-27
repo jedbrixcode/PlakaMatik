@@ -2,17 +2,16 @@ import os
 import json
 import config
 
-def load_config():
+def load_config(override_path=None):
     """
     Loads dynamic settings injected by the Flutter Frontend JSON Bridge.
     Falls back to factory defaults gracefully if bridging fails.
     """
-    config_path = os.path.join(config.PLAKAMATIK_DIR, "config.json")
+    config_path = override_path if override_path else os.path.join(config.PLAKAMATIK_DIR, "config.json")
     
     # Factory defaults
     defaults = {
         "PRINTER_NAME": "Microsoft Print to PDF",
-        "COLOR_MODE": "CMYK",
         "CORELDRAW_VISIBLE": False,
         "GLOBAL_OFFSETS": {
             "dx": 0.0,

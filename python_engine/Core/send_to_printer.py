@@ -22,7 +22,9 @@ def print_pdf(pdf_path, printer_name, job_type="single"):
     print(f"Connecting to hardware spooler: {printer_name}")
     
     if check_printer_offline(printer_name):
-        print("HALTING: PRINTER IS OFFLINE, ERRORED, OR NOT RESPONDING.")
+        err_msg = "HALTING: PRINTER IS OFFLINE, ERRORED, OR NOT RESPONDING."
+        print(err_msg)
+        print(err_msg, file=sys.stderr)
         sys.exit(1)
         
     log_type = "batch dual-plates" if job_type == "multiple" else "single print"
@@ -41,7 +43,9 @@ def print_pdf(pdf_path, printer_name, job_type="single"):
         time.sleep(2)
         print(f"Success! {log_type} spooled to device.")
     except Exception as e:
-        print(f"HALTING: Critical spool injection error: {e}")
+        err_msg = f"HALTING: Critical spool injection error: {e}"
+        print(err_msg)
+        print(err_msg, file=sys.stderr)
         sys.exit(1)
 
 if __name__ == "__main__":

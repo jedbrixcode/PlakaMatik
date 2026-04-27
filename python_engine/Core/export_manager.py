@@ -3,7 +3,7 @@ import traceback
 from text_mapper import replace_text_in_shapes
 from layer_composer import compose_and_align_layers
 
-def execute_print_merge_to_pdf(corel_app, data_records, output_pdf_path, template_mv_path, template_mc_path, force_cmyk=True, global_dx=0.0, global_dy=0.0):
+def execute_print_merge_to_pdf(corel_app, data_records, output_pdf_path, template_mv_path, template_mc_path, global_dx=0.0, global_dy=0.0):
     try:
         total_records = len(data_records)
         print(f"Initializing Master Engine merge. Total records to process: {total_records}")
@@ -62,7 +62,7 @@ def execute_print_merge_to_pdf(corel_app, data_records, output_pdf_path, templat
         master_doc.ClearSelection()
         pdf_settings = master_doc.PDFSettings
         pdf_settings.PublishRange = 0 
-        pdf_settings.ColorMode = 2 if force_cmyk else 1 # cdrColorCMYK = 2, cdrColorRGB = 1 
+        pdf_settings.ColorMode = 1 # Force RGB Native Rip Space
         
         # EXPORT 1: The UI Preview PDF (Includes Visible Backgrounds & Guides)
         print("Data mapping securely applied. Exporting VERIFICATION PREVIEW...")

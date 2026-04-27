@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 import '../viewmodels/navigation_viewmodel.dart';
+import '../viewmodels/settings_viewmodel.dart';
 import 'multiple_plate_view.dart';
 import 'single_plate_view.dart';
 import 'information_view.dart';
@@ -18,11 +19,15 @@ class MainLayout extends StatelessWidget {
         children: [
           // Background Layer
           Positioned.fill(
-            child: Image.asset(
-              'assets/BACKGROUND.png',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  Container(color: Colors.blueGrey[50]),
+            child: Consumer<SettingsViewModel>(
+              builder: (context, settings, child) {
+                return Image.asset(
+                  settings.isDarkMode ? 'assets/BACKGROUND_DARKMODE.png' : 'assets/BACKGROUND.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      Container(color: Colors.blueGrey[50]),
+                );
+              },
             ),
           ),
 
@@ -69,19 +74,22 @@ class MainLayout extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: () async {
                   final String dir = Directory.current.path;
-                  final pythonScript = '$dir/python_engine/Core/main.py';
-                  print("Triggering Manual Python Debug Button...");
+                  final exePath = '$dir/python_engine/Core/dist/orchestrator.exe';
+                  print("Triggering Manual Orchestrator Debug Button...");
                   Process.run(
-                    'python',
-                    [pythonScript],
+                    exePath,
+                    [],
                     workingDirectory: '$dir/python_engine/Core',
                   ).then((result) {
-                    print("Python Engine Terminated. Code: ${result.exitCode}");
+                    print("Orchestrator Terminated. Code: ${result.exitCode}");
                     print("Logs Context: ${result.stdout}");
+                    if (result.stderr.toString().isNotEmpty) {
+                      print("Errors: ${result.stderr}");
+                    }
                   });
                 },
                 icon: const Icon(Icons.bug_report_outlined),
-                label: const Text('DEBUG: Open Python Engine'),
+                label: const Text('DEBUG: Open Python Orchestrator'),
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.redAccent.shade700,
                   foregroundColor: Colors.white,

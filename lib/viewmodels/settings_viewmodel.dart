@@ -10,7 +10,7 @@ class SettingsViewModel extends ChangeNotifier {
   double globalDxOffset = 0.0;
   double globalDyOffset = 0.0;
 
-  bool isCmyk = true;
+  bool isDarkMode = false;
   bool isVisibleCorel = false;
   String selectedPrinter = 'Default';
   List<String> availablePrinters = ['Default'];
@@ -26,7 +26,7 @@ class SettingsViewModel extends ChangeNotifier {
     globalDxOffset = prefs.getDouble('globalDxOffset') ?? 0.0;
     globalDyOffset = prefs.getDouble('globalDyOffset') ?? 0.0;
 
-    isCmyk = prefs.getBool('isCmyk') ?? true;
+    isDarkMode = prefs.getBool('isDarkMode') ?? false;
     isVisibleCorel = prefs.getBool('isVisibleCorel') ?? false;
     selectedPrinter = prefs.getString('selectedPrinter') ?? 'Default';
 
@@ -69,7 +69,7 @@ class SettingsViewModel extends ChangeNotifier {
     await prefs.setBool('isSimulationMode', isSimulationMode);
     await prefs.setDouble('globalDxOffset', globalDxOffset);
     await prefs.setDouble('globalDyOffset', globalDyOffset);
-    await prefs.setBool('isCmyk', isCmyk);
+    await prefs.setBool('isDarkMode', isDarkMode);
     await prefs.setBool('isVisibleCorel', isVisibleCorel);
     await prefs.setString('selectedPrinter', selectedPrinter);
     notifyListeners();
@@ -87,7 +87,6 @@ class SettingsViewModel extends ChangeNotifier {
 
       final payload = {
         "PRINTER_NAME": selectedPrinter,
-        "COLOR_MODE": isCmyk ? "CMYK" : "RGB",
         "CORELDRAW_VISIBLE": isVisibleCorel,
         "GLOBAL_OFFSETS": {
           "dx": globalDxOffset,
@@ -113,7 +112,7 @@ class SettingsViewModel extends ChangeNotifier {
       // Also reset Flutter internals
       globalDxOffset = 0.0;
       globalDyOffset = 0.0;
-      isCmyk = true;
+      isDarkMode = false;
       isVisibleCorel = false;
       saveSettingsRich();
     } catch (e) {
@@ -121,8 +120,8 @@ class SettingsViewModel extends ChangeNotifier {
     }
   }
 
-  void updateCmyk(bool val) {
-    isCmyk = val;
+  void updateDarkMode(bool val) {
+    isDarkMode = val;
     saveSettingsRich();
   }
 

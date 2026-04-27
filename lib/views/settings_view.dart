@@ -126,11 +126,6 @@ class SettingsView extends StatelessWidget {
                           viewModel,
                         ),
                         _buildSwitchRow(
-                          'Force CMYK Hard-Separation',
-                          viewModel.isCmyk,
-                          (v) => viewModel.updateCmyk(v),
-                        ),
-                        _buildSwitchRow(
                           'Show Hidden Backend Execution Processes',
                           viewModel.isVisibleCorel,
                           (v) => viewModel.updateVisibleCorel(v),
@@ -165,7 +160,7 @@ class SettingsView extends StatelessWidget {
                           viewModel,
                           isX: false,
                         ),
-                        _buildThemeSwitchRow(),
+                        _buildThemeSwitchRow(viewModel),
                       ],
                     ),
                   ),
@@ -302,11 +297,13 @@ class SettingsView extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 16,
-              overflow: TextOverflow.ellipsis,
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 16,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
           Container(
@@ -371,7 +368,7 @@ class SettingsView extends StatelessWidget {
     );
   }
 
-  Widget _buildThemeSwitchRow() {
+  Widget _buildThemeSwitchRow(SettingsViewModel vm) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: Row(
@@ -379,40 +376,54 @@ class SettingsView extends StatelessWidget {
         children: [
           const Text(
             'Dark Mode',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey.shade300),
             ),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.blueAccent,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    "Light",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                GestureDetector(
+                  onTap: () => vm.updateDarkMode(false),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: !vm.isDarkMode ? Colors.blueAccent : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      "Light",
+                      style: TextStyle(
+                        color: !vm.isDarkMode ? Colors.white : Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 8,
-                  ),
-                  child: const Text(
-                    "Dark",
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                GestureDetector(
+                  onTap: () => vm.updateDarkMode(true),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: vm.isDarkMode ? Colors.blueAccent : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      "Dark",
+                      style: TextStyle(
+                        color: vm.isDarkMode ? Colors.white : Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],

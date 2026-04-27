@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import argparse
 
@@ -10,10 +11,12 @@ from corel_engine import CorelAutomator
 from export_manager import execute_print_merge_to_pdf
 from session_manager import cleanup_old_sessions
 from config_manager import load_config
+from send_to_printer import print_pdf
 
 def parse_args():
-    # Deprecated by JSON Bridge, retained structurally if needed.
     parser = argparse.ArgumentParser(description='PlakaMatik Python Export Hand-off Engine')
+    parser.add_argument('--config', type=str, default=None, help='Absolute path to config.json')
+    parser.add_argument('--session-id', type=str, default=None, help='Override the session ID timestamp')
     return parser.parse_known_args()[0]
 
 # Initialize Logging (Session ID generated natively)
@@ -23,11 +26,11 @@ def run_pipeline(args):
     print(f"--- Starting LTO Automation Batch (Session {config.SESSION_ID}) ---")
     
     # 2. JSON Bridge Configuration Integration
-    dynamic_config = load_config()
-    is_cmyk = dynamic_config["COLOR_MODE"].upper() == "CMYK"
+    dynamic_config = load_config(args.config)
     is_visible = dynamic_config["CORELDRAW_VISIBLE"]
     global_dx = dynamic_config["GLOBAL_OFFSETS"].get("dx", 0.0)
     global_dy = dynamic_config["GLOBAL_OFFSETS"].get("dy", 0.0)
+    printer_name = dynamic_config.get("PRINTER_NAME", "Microsoft Print to PDF")
 
     # 3. Process the data enforcing max batch rules
     data_records = parse_input_data(config.INPUT_TXT_PATH)
@@ -72,19 +75,27 @@ def run_pipeline(args):
                 final_pdf_path,
                 config.TEMPLATE_MV_PATH,
                 config.TEMPLATE_MC_PATH,
-                force_cmyk=is_cmyk,
                 global_dx=global_dx,
                 global_dy=global_dy
             )
 
             if merge_success:
                 print(f"--- Pipeline complete. Previews generated: {final_pdf_path} ---")
+                
+                # Internal Spooling via PrintHandler (send_to_printer.py)
+                print_pdf_path = final_pdf_path.replace(".pdf", "_PRINT.pdf")
+                job_type = "multiple" if len(data_records) > 1 else "single"
+                print_pdf(print_pdf_path, printer_name, job_type)
             else:
-                print("--- Pipeline failed during template orchestration ---")
+                err_msg = "Pipeline failed during template orchestration."
+                print(f"--- {err_msg} ---")
+                print(err_msg, file=sys.stderr)
         except Exception as e:
             import traceback
             traceback.print_exc()
-            print(f"Critical execution error: {e}")
+            err_msg = f"Critical execution error: {e}"
+            print(err_msg)
+            print(err_msg, file=sys.stderr)
         finally:
             try:
                 for i in range(1, automator.corel.Documents.Count + 1):
@@ -96,5 +107,13 @@ def run_pipeline(args):
 
 if __name__ == "__main__":
     args = parse_args()
-    print(f"Starting pipeline with Config -> CMYK:{args.cmyk} VISIBLE:{args.visible}")
+    
+    # Inject override for session ID if requested by Flutter
+    if args.session_id:
+        config.SESSION_ID = args.session_id
+        
+    # Re-init logger since session ID might have changed
+    init_logger(config.SESSION_ID, config.LOGS_DIR)
+        
+    print(f"Starting Unified Orchestrator Pipeline...")
     run_pipeline(args)
