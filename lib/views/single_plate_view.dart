@@ -324,30 +324,6 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 15),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 50,
-                              child: ElevatedButton.icon(
-                                onPressed: (_isProcessing || _previewPath == null)
-                                    ? null
-                                    : () => _printPhysicalPlate(settings),
-                                icon: const Icon(Icons.print),
-                                label: const Text(
-                                  'PRINT PHYSICAL PLATE',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green.shade600,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                       ),

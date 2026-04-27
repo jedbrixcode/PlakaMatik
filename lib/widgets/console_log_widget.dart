@@ -62,9 +62,7 @@ class _ConsoleLogWidgetState extends State<ConsoleLogWidget> {
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Text(
-                      logs.length > 20
-                          ? logs.sublist(logs.length - 20).join('\n')
-                          : logs.join('\n'),
+                      logs.join('\n'),
                       style: const TextStyle(
                         color: Colors.lightGreen,
                         fontFamily: 'monospace',

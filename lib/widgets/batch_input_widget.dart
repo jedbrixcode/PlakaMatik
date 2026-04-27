@@ -33,9 +33,10 @@ class _BatchInputWidgetState extends State<BatchInputWidget> {
         color: Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(15),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           const Text(
             'Plate Data Entry',
             style: TextStyle(
@@ -203,6 +204,7 @@ class _BatchInputWidgetState extends State<BatchInputWidget> {
                   },
           ),
         ],
+        ),
       ),
     );
   }

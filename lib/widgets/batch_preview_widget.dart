@@ -76,12 +76,22 @@ class BatchPreviewWidget extends StatelessWidget {
     final viewModel = Provider.of<BatchViewModel>(context);
     final settings = Provider.of<SettingsViewModel>(context);
 
-    final String projectRoot = Directory.current.path;
-    final String previewPdfPath =
-        '$projectRoot/PlakaMatik Files/Outputs/LTO_Batch_${viewModel.cleanupService.currentSessionId}_PREVIEW.pdf';
-        
-    final File previewFile = File(previewPdfPath);
-    final bool hasPreviewLink = previewFile.existsSync() && viewModel.requiresNextRunPrompt;
+    final String docsPath = Platform.environment['USERPROFILE'] ?? '';
+    final outputsDir = Directory('$docsPath/Documents/PlakaMatik Files/Outputs');
+
+    File? latestPreview;
+    if (outputsDir.existsSync()) {
+      final previews = outputsDir
+          .listSync()
+          .where((f) => f.path.endsWith('_PREVIEW.pdf'))
+          .toList();
+      if (previews.isNotEmpty) {
+        previews.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+        latestPreview = File(previews.last.path);
+      }
+    }
+
+    final bool hasPreviewLink = latestPreview != null && latestPreview.existsSync();
 
     return Container(
       decoration: BoxDecoration(
@@ -108,9 +118,8 @@ class BatchPreviewWidget extends StatelessWidget {
                       top: Radius.circular(15),
                     ),
                     child: SfPdfViewer.file(
-                      previewFile,
-                      // FORCE UI update by generating a unique key from file timestamp
-                      key: ValueKey(previewFile.lastModifiedSync().millisecondsSinceEpoch),
+                      latestPreview!,
+                      key: ValueKey(latestPreview.lastModifiedSync().millisecondsSinceEpoch),
                       canShowScrollHead: false,
                       canShowScrollStatus: false,
                     ),

@@ -1,5 +1,6 @@
 import os
 import glob
+import shutil
 
 def cleanup_old_sessions(directories, current_session):
     """
@@ -15,7 +16,10 @@ def cleanup_old_sessions(directories, current_session):
                 try:
                     # Ignore .gitignores if present
                     if not filename.startswith("."): 
-                        os.remove(file)
-                        print(f"Purged old ghost file: {filename}")
+                        if os.path.isdir(file):
+                            shutil.rmtree(file)
+                        else:
+                            os.remove(file)
+                        print(f"Purged old ghost artifact: {filename}")
                 except Exception as e:
                     print(f"Warning: Could not delete {filename}. {e}")

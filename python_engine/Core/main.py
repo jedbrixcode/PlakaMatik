@@ -25,6 +25,11 @@ def parse_args():
 
 def run_pipeline(args):
     print(f"--- Starting LTO Automation Batch (Session {config.SESSION_ID}) ---")
+    print(f"[PATH] PlakaMatik Dir : {config.PLAKAMATIK_DIR}")
+    print(f"[PATH] MV Template    : {config.TEMPLATE_MV_PATH} | exists={os.path.isfile(config.TEMPLATE_MV_PATH)}")
+    print(f"[PATH] MC Template    : {config.TEMPLATE_MC_PATH} | exists={os.path.isfile(config.TEMPLATE_MC_PATH)}")
+    print(f"[PATH] Input TXT      : {config.INPUT_TXT_PATH} | exists={os.path.isfile(config.INPUT_TXT_PATH)}")
+    print(f"[PATH] Outputs Dir    : {config.OUTPUTS_DIR}")
     
     # 2. JSON Bridge Configuration Integration
     dynamic_config = load_config(args.config)

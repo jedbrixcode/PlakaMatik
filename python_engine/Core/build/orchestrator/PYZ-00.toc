@@ -664,10 +664,6 @@
    'C:\\Users\\Window '
    '10\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\json\\scanner.py',
    'PYMODULE'),
-  ('layer_composer',
-   'C:\\Users\\Window 10\\Documents\\Jed '
-   'Internship\\Project\\plakamatic_flutterui\\python_engine\\Core\\layer_composer.py',
-   'PYMODULE'),
   ('logging',
    'C:\\Users\\Window '
    '10\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\logging\\__init__.py',

@@ -106,19 +106,22 @@ class BatchViewModel extends ChangeNotifier {
       ).timeout(const Duration(seconds: 45));
 
       if (process.exitCode == 0) {
-        try {
-          final response = jsonDecode(process.stdout.toString());
-          for (int i = 0; i < currentChunk.length; i++) {
-            final globalIndex = currentRunIndex + i;
-            if (response['data'] != null && response['data'].length > i) {
-              printQueue[globalIndex].dxOffset = response['data'][i]['dx'];
-              printQueue[globalIndex].dyOffset = response['data'][i]['dy'];
-              printQueue[globalIndex].previewPath =
-                  response['data'][i]['preview_path'];
-            }
+        // Scan the Outputs folder for _PREVIEW.pdf files matching this session
+        final outputsDir = Directory('${docsDir.path}/PlakaMatik Files/Outputs');
+        final sessionPreviews = outputsDir
+            .listSync()
+            .where((f) => f.path.endsWith('_PREVIEW.pdf'))
+            .toList();
+        sessionPreviews.sort(
+          (a, b) => a.statSync().modified.compareTo(b.statSync().modified),
+        );
+
+        // Assign preview paths to each chunk plate in order
+        for (int i = 0; i < currentChunk.length; i++) {
+          final globalIndex = currentRunIndex + i;
+          if (sessionPreviews.length > i) {
+            printQueue[globalIndex].previewPath = sessionPreviews[sessionPreviews.length - currentChunk.length + i].path;
           }
-        } catch (e) {
-          print("JSON Parsing or format unexpected: $e");
         }
 
         currentRunIndex = endIndex;
