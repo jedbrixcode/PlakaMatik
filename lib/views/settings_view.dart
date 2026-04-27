@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
@@ -394,7 +392,9 @@ class SettingsView extends StatelessWidget {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: !vm.isDarkMode ? Colors.blueAccent : Colors.transparent,
+                      color: !vm.isDarkMode
+                          ? Colors.blueAccent
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -414,7 +414,9 @@ class SettingsView extends StatelessWidget {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: vm.isDarkMode ? Colors.blueAccent : Colors.transparent,
+                      color: vm.isDarkMode
+                          ? Colors.blueAccent
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(

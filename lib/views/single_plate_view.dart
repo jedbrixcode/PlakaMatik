@@ -60,9 +60,8 @@ class _SinglePlateViewState extends State<SinglePlateView> {
 
       final String projectRoot = Directory.current.path;
       final exePath = '$projectRoot/python_engine/Core/dist/orchestrator.exe';
-      final docsDir = await getApplicationDocumentsDirectory();
       final configPath = '${docsDir.path}/PlakaMatik Files/config.json';
-      
+
       List<String> pyArgs = ['--config', configPath];
 
       final process = await Process.run(
@@ -116,13 +115,17 @@ class _SinglePlateViewState extends State<SinglePlateView> {
     setState(() {
       _isProcessing = true;
     });
-    
+
     try {
       final String projectRoot = Directory.current.path;
       final pythonScript = '$projectRoot/python_engine/Core/send_to_printer.py';
-      
-      final cleanupService = Provider.of<CleanupService>(context, listen: false);
-      String targetPdf = '$projectRoot/PlakaMatik Files/Outputs/LTO_Batch_${cleanupService.currentSessionId}_PRINT.pdf';
+
+      final cleanupService = Provider.of<CleanupService>(
+        context,
+        listen: false,
+      );
+      String targetPdf =
+          '$projectRoot/PlakaMatik Files/Outputs/LTO_Batch_${cleanupService.currentSessionId}_PRINT.pdf';
 
       final process = await Process.run(
         'python',
@@ -133,18 +136,28 @@ class _SinglePlateViewState extends State<SinglePlateView> {
       if (!mounted) return;
 
       if (process.exitCode == 0) {
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Atomic Process Confirmed: Printed physically!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Atomic Process Confirmed: Printed physically!'),
+          ),
+        );
       } else {
-         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: ${process.stderr}')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: ${process.stderr}')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Spooler Error: Python Engine detached.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Spooler Error: Python Engine detached.'),
+          ),
+        );
       }
     } finally {
       if (mounted) {
         setState(() {
-           _isProcessing = false;
+          _isProcessing = false;
         });
       }
     }
@@ -256,9 +269,7 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                       ),
                       const SizedBox(height: 15),
                       // LOGS CONTAINER
-                      const Expanded(
-                        child: ConsoleLogWidget(),
-                      ),
+                      const Expanded(child: ConsoleLogWidget()),
                     ],
                   ),
                 ),
