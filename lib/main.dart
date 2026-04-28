@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'services/backend_service.dart';
 import 'services/cleanup_service.dart';
 import 'services/log_watcher_service.dart';
 import 'viewmodels/batch_viewmodel.dart';
@@ -11,6 +12,8 @@ import 'views/main_layout.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
+  // Extract bundled orchestrator.exe to a writable Documents path
+  await BackendService.instance.initialize();
   final cleanupService = CleanupService();
 
 

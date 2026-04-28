@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import '../services/backend_service.dart';
 import '../viewmodels/settings_viewmodel.dart';
 import '../widgets/console_log_widget.dart';
 import '../widgets/print_countdown_dialog.dart';
@@ -64,7 +65,7 @@ class _SinglePlateViewState extends State<SinglePlateView> {
       await file.writeAsBytes(bytes);
 
       final String projectRoot = Directory.current.path;
-      final exePath = '$projectRoot/python_engine/Core/dist/orchestrator.exe';
+      final exePath = BackendService.instance.executablePath;
       final configPath = '$plakamaticDir/config.json';
 
       final process = await Process.run(

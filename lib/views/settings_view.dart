@@ -96,19 +96,14 @@ class SettingsView extends StatelessWidget {
                           },
                           color: Colors.green,
                         ),
-                        _buildActionButtonRow(
-                          'Reset JSON',
-                          'RESET',
-                          () {
-                            viewModel.resetJsonHandshake();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("JSON reset to defaults."),
-                              ),
-                            );
-                          },
-                          color: Colors.red,
-                        ),
+                        _buildActionButtonRow('Reset JSON', 'RESET', () {
+                          viewModel.resetJsonHandshake();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("JSON reset to defaults."),
+                            ),
+                          );
+                        }, color: Colors.red),
                       ],
                     ),
                   ),

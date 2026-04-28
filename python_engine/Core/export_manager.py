@@ -1,6 +1,13 @@
 import os
+import time
 import traceback
 from text_mapper import replace_text_in_shapes
+
+
+def _heartbeat(label=""):
+    """Print a heartbeat so Flutter's process listener knows the engine is alive."""
+    print(f"[HEARTBEAT] {label}" if label else "[HEARTBEAT] Engine running...", flush=True)
+
 
 def _set_layer_visibility(page, layer_name_upper, printable, visible):
     """Helper: set printable and visible for a named layer on a CorelDRAW page."""
@@ -13,228 +20,253 @@ def _set_layer_visibility(page, layer_name_upper, printable, visible):
             except Exception as e:
                 print(f"Warning: Could not set layer '{lyr.Name}' visibility: {e}")
             return
-    print(f"Warning: Layer '{layer_name_upper}' not found on page.")
+    print(f"Note: Layer '{layer_name_upper}' not present on this page.")
 
 
-def _export_single_record(corel_app, record_data, template_path, preview_pdf_path, print_pdf_path, global_dx=0.0, global_dy=0.0):
+def _inject_text(corel_app, template_path, record_data, p_type):
     """
-    Opens a single CDR template, injects text values into 'Print Layer',
-    then exports two PDFs: one PREVIEW (Print + Mock, no Guides) and one PRINT (Print only, no Mock/Guides).
+    Opens a CDR template, injects text into the Print Layer.
+    Returns (doc, page). Caller is responsible for closing the doc.
     """
-    p_type = record_data.get("type", "MV").upper()
-
-    if not os.path.exists(template_path):
-        print(f"Error: Template {template_path} not found.")
-        return False
-
-    print(f"Opening template: {os.path.basename(template_path)} for type {p_type}")
+    print(f"[STAGE] Opening template: {os.path.basename(template_path)} ({p_type})")
     doc = corel_app.OpenDocument(template_path)
     doc.Unit = 4  # cdrCentimeter
     page = doc.Pages.Item(1)
 
-    # --- Inject text values into PRINT LAYER shapes only ---
-    print(f"Injecting values: middle='{record_data.get('middle','')}' identifier='{record_data.get('identifier','')}' into Print Layer...")
+    middle_val     = record_data.get('middle', '')
+    identifier_val = record_data.get('identifier', '')
+    print(f"[STAGE] Injecting -> middle='{middle_val}' identifier='{identifier_val}'")
+
     for i in range(1, page.Layers.Count + 1):
         lyr = page.Layers.Item(i)
         if lyr.Name.upper() == "PRINT LAYER":
             replace_text_in_shapes(lyr.Shapes, record_data, p_type)
             break
 
+    _heartbeat("Text injection complete")
+    return doc, page
+
+
+def _export_single_record(corel_app, record_data, template_path,
+                          preview_pdf_path, print_pdf_path,
+                          global_dx=0.0, global_dy=0.0):
+    """
+    Single-plate path: open template, inject text, toggle layers, export two PDFs.
+    """
+    p_type = record_data.get("type", "MV").upper()
+
+    if not os.path.exists(template_path):
+        print(f"Error: Template not found -> {template_path}")
+        return False
+
+    doc, page = _inject_text(corel_app, template_path, record_data, p_type)
+
     doc.ClearSelection()
     pdf_settings = doc.PDFSettings
     pdf_settings.PublishRange = 0
-    pdf_settings.ColorMode = 1  # Force RGB
+    pdf_settings.ColorMode = 1  # RGB
 
-    # --- EXPORT 1: PREVIEW PDF (Print Layer + Mock Layer visible, Guides hidden) ---
-    print("Exporting VERIFICATION PREVIEW...")
+    print("[STAGE] Exporting PREVIEW PDF...")
     _set_layer_visibility(page, "PRINT LAYER", printable=True,  visible=True)
     _set_layer_visibility(page, "MOCK LAYER",  printable=True,  visible=True)
-    _set_layer_visibility(page, "GUIDES",       printable=False, visible=False)
+    _set_layer_visibility(page, "GUIDES",      printable=False, visible=False)
     doc.PublishToPDF(preview_pdf_path)
     print(f"Preview PDF saved: {preview_pdf_path}")
+    _heartbeat("Preview exported")
 
-    # --- EXPORT 2: PRINT PDF (Print Layer only, Mock + Guides hidden) ---
-    print("Exporting PRINT-READY PAYLOAD...")
+    print("[STAGE] Exporting PRINT PDF...")
     _set_layer_visibility(page, "PRINT LAYER", printable=True,  visible=True)
     _set_layer_visibility(page, "MOCK LAYER",  printable=False, visible=False)
-    _set_layer_visibility(page, "GUIDES",       printable=False, visible=False)
+    _set_layer_visibility(page, "GUIDES",      printable=False, visible=False)
     doc.PublishToPDF(print_pdf_path)
     print(f"Print PDF saved: {print_pdf_path}")
+    _heartbeat("Print PDF exported")
 
     doc.Dirty = False
     doc.Close()
     return True
 
 
-def execute_print_merge_to_pdf(corel_app, data_records, output_pdf_path, template_mv_path, template_mc_path, global_dx=0.0, global_dy=0.0):
+def execute_print_merge_to_pdf(corel_app, data_records, output_pdf_path,
+                               template_mv_path, template_mc_path,
+                               global_dx=0.0, global_dy=0.0):
     """
-    Entry point. For each record, opens the correct CDR template, injects text,
-    and exports PREVIEW and PRINT PDFs directly from the template document.
-    All outputs land in Documents/PlakaMatik Files/Outputs/.
+    Entry point called by main.py.
+      - 1 record  -> direct single-plate export
+      - 2+ records -> build a fresh A3 master canvas; paste all plates positioned
+                      top-half / bottom-half; export one PREVIEW and one PRINT PDF.
     """
     try:
         total_records = len(data_records)
-        print(f"Initializing Master Engine merge. Total records to process: {total_records}")
+        print(f"[STAGE] Initializing Master Engine. Total records: {total_records}")
 
         if total_records == 0:
-            print("No records found to merge.")
+            print("No records found.")
             return False
 
-        base = output_pdf_path.replace(".pdf", "")
+        base         = output_pdf_path.replace(".pdf", "")
         preview_path = f"{base}_PREVIEW.pdf"
         print_path   = f"{base}_PRINT.pdf"
 
+        # ── SINGLE PLATE ────────────────────────────────────────────────────────
         if total_records == 1:
-            # ---- SINGLE PLATE: open template, inject, export directly ----
-            record_data = data_records[0]
-            p_type = record_data.get("type", "MV").upper()
+            record_data   = data_records[0]
+            p_type        = record_data.get("type", "MV").upper()
             template_path = template_mc_path if p_type == "MC" else template_mv_path
             result = _export_single_record(
                 corel_app, record_data, template_path,
                 preview_path, print_path, global_dx, global_dy
             )
-            print(f"Silenced PDF exports achieved. {'1' if result else '0'}/1 records exported.")
+            ok = '1' if result else '0'
+            print(f"Silenced PDF exports achieved. {ok}/1 records exported.")
             return result
 
-        else:
-            # ---- BATCH: combine all plates into one document, one PDF each ----
-            print(f"Batch mode: combining {total_records} plates into a single A3 document...")
+        # ── BATCH (2+ records) -> fresh A3 master canvas ─────────────────────────
+        print(f"[STAGE] Batch mode: building A3 master canvas for {total_records} plates...")
+        _heartbeat("Starting batch canvas build")
 
-            # Open the first template to use as the master document
-            first_record = data_records[0]
-            first_type   = first_record.get("type", "MV").upper()
-            first_tmpl   = template_mc_path if first_type == "MC" else template_mv_path
+        # A3 landscape: 420 mm × 297 mm = 42 cm × 29.7 cm
+        A3_W_CM = 42.0
+        A3_H_CM = 29.7
 
-            if not os.path.exists(first_tmpl):
-                print(f"Error: Template {first_tmpl} not found.")
-                return False
+        print("[STAGE] Creating blank A3 master document...")
+        master_doc  = corel_app.CreateDocument()
+        master_doc.Unit = 4
+        master_page = master_doc.Pages.Item(1)
+        master_page.SetSize(A3_W_CM, A3_H_CM)
 
-            print(f"Opening master template: {os.path.basename(first_tmpl)}")
-            master_doc = corel_app.OpenDocument(first_tmpl)
-            master_doc.Unit = 4
-            master_page1 = master_doc.Pages.Item(1)
+        # Build named layers on the master canvas
+        try:
+            master_print_lyr = master_page.Layers.Item(1)
+            master_print_lyr.Name = "Print Layer"
+        except:
+            master_print_lyr = master_page.CreateLayer("Print Layer")
 
-            # Inject values into page 1
-            print(f"Injecting record 1 ({first_type}) values into Page 1...")
-            for i in range(1, master_page1.Layers.Count + 1):
-                lyr = master_page1.Layers.Item(i)
-                if lyr.Name.upper() == "PRINT LAYER":
-                    from text_mapper import replace_text_in_shapes
-                    replace_text_in_shapes(lyr.Shapes, first_record, first_type)
-                    break
+        try:
+            master_mock_lyr = master_page.CreateLayer("Mock Layer")
+        except:
+            master_mock_lyr = master_page.Layers.Item("Mock Layer")
 
-            # Add remaining records as additional pages
-            for p_idx in range(1, total_records):
-                record_data = data_records[p_idx]
-                p_type = record_data.get("type", "MV").upper()
-                template_path = template_mc_path if p_type == "MC" else template_mv_path
+        _heartbeat("Master A3 canvas ready")
 
-                if not os.path.exists(template_path):
-                    print(f"Error: Template {template_path} not found. Skipping record {p_idx+1}.")
+        # ── Paste each record's shapes onto the A3 canvas ──────────────────────
+        for p_idx, record_data in enumerate(data_records):
+            p_type        = record_data.get("type", "MV").upper()
+            template_path = template_mc_path if p_type == "MC" else template_mv_path
+
+            if not os.path.exists(template_path):
+                print(f"Error: Template not found for record {p_idx+1}: {template_path}")
+                continue
+
+            src_doc, src_page = _inject_text(
+                corel_app, template_path, record_data, p_type
+            )
+            _heartbeat(f"Merging record {p_idx+1}/{total_records}")
+
+            # Vertical target: record 0 -> top half, record 1 -> bottom half
+            target_cx = (A3_W_CM / 2.0) + global_dx
+            target_cy = (A3_H_CM * 0.75 if p_idx == 0 else A3_H_CM * 0.25) + global_dy
+
+            for li in range(1, src_page.Layers.Count + 1):
+                src_lyr   = src_page.Layers.Item(li)
+                lyr_upper = src_lyr.Name.upper()
+
+                if "GUIDE" in lyr_upper or src_lyr.Shapes.Count == 0:
                     continue
 
-                print(f"Opening template for record {p_idx+1}: {os.path.basename(template_path)}")
-                src_doc = corel_app.OpenDocument(template_path)
-                src_page = src_doc.Pages.Item(1)
+                # Build a ShapeRange excluding guideline objects (Type 9)
+                sr = corel_app.CreateShapeRange()
+                for si in range(1, src_lyr.Shapes.Count + 1):
+                    try:
+                        s = src_lyr.Shapes.Item(si)
+                        if s.Type != 9:
+                            sr.Add(s)
+                    except:
+                        pass
 
-                # Inject values
-                print(f"Injecting record {p_idx+1} ({p_type}) values...")
-                for i in range(1, src_page.Layers.Count + 1):
-                    lyr = src_page.Layers.Item(i)
-                    if lyr.Name.upper() == "PRINT LAYER":
-                        from text_mapper import replace_text_in_shapes
-                        replace_text_in_shapes(lyr.Shapes, record_data, p_type)
-                        break
+                if sr.Count == 0:
+                    continue
 
-                # Add a new page to master document and copy all content
+                # Copy the shapes (group first if multiple)
                 try:
-                    import time
-                    new_page = master_doc.Pages.Add()
-                    new_page.SetSize(src_page.SizeWidth, src_page.SizeHeight)
+                    if sr.Count > 1:
+                        grp = sr.Group()
+                        grp.Copy()
+                    else:
+                        sr.Item(1).Copy()
+                except Exception as copy_e:
+                    print(f"  Warning: copy error on layer '{src_lyr.Name}': {copy_e}")
+                    continue
 
-                    # Copy every layer's shapes from src_page → new_page
-                    for li in range(1, src_page.Layers.Count + 1):
-                        src_lyr = src_page.Layers.Item(li)
-                        lyr_name = src_lyr.Name
+                time.sleep(0.4)
 
-                        # Skip guideline layers (Type 2)
-                        if src_lyr.Shapes.Count == 0:
-                            continue
+                # Switch to master doc and activate the right destination layer
+                master_doc.Activate()
+                if "MOCK" in lyr_upper:
+                    master_mock_lyr.Activate()
+                else:
+                    master_print_lyr.Activate()
 
-                        # Select all shapes on this source layer
-                        sr = corel_app.CreateShapeRange()
-                        for si in range(1, src_lyr.Shapes.Count + 1):
-                            try:
-                                sr.Add(src_lyr.Shapes.Item(si))
-                            except:
-                                pass
+                # Paste and reposition
+                try:
+                    pasted = master_doc.ActiveLayer.Paste()
+                    time.sleep(0.4)
+                    cx = pasted.PositionX + pasted.SizeWidth  / 2.0
+                    cy = pasted.PositionY - pasted.SizeHeight / 2.0
+                    pasted.Move(target_cx - cx, target_cy - cy)
+                    print(f"  [MERGE {p_idx+1}] '{src_lyr.Name}' pasted & positioned.")
+                except Exception as pos_e:
+                    print(f"  Warning: paste/position error: {pos_e}")
 
-                        if sr.Count == 0:
-                            continue
+                _heartbeat(f"Layer '{src_lyr.Name}' merged for record {p_idx+1}")
 
-                        # Group, copy, activate target page, paste
-                        try:
-                            grp = sr.Group()
-                            grp.Copy()
-                        except:
-                            sr.Item(1).Copy()
+            src_doc.Dirty = False
+            src_doc.Close()
+            print(f"[STAGE] Record {p_idx+1} fully merged onto A3 canvas.")
+            _heartbeat(f"Record {p_idx+1} complete")
 
-                        time.sleep(0.3)
-                        master_doc.Activate()
+        # ── Export PREVIEW (all layers visible, no Guides) ──────────────────────
+        print("[STAGE] Exporting COMBINED VERIFICATION PREVIEW...")
+        _heartbeat("Starting PREVIEW export")
+        master_doc.ClearSelection()
+        pdf_settings = master_doc.PDFSettings
+        pdf_settings.PublishRange = 0
+        pdf_settings.ColorMode    = 1
 
-                        # Ensure matching layer exists on new_page
-                        dest_lyr = None
-                        try:
-                            dest_lyr = new_page.Layers.Item(lyr_name)
-                        except:
-                            try:
-                                dest_lyr = new_page.CreateLayer(lyr_name)
-                            except:
-                                dest_lyr = new_page.Layers.Item(1)
-                        dest_lyr.Activate()
+        for li in range(1, master_page.Layers.Count + 1):
+            lyr = master_page.Layers.Item(li)
+            lu  = lyr.Name.upper()
+            if "GUIDE" in lu:
+                lyr.Printable = False
+                lyr.Visible   = False
+            else:
+                lyr.Printable = True
+                lyr.Visible   = True
 
-                        new_page.Activate()
-                        master_doc.ActiveLayer.Paste()
-                        time.sleep(0.3)
+        master_doc.PublishToPDF(preview_path)
+        print(f"Combined preview PDF saved: {preview_path}")
+        _heartbeat("PREVIEW exported")
 
-                    print(f"  Record {p_idx+1} merged into master doc as Page {master_doc.Pages.Count}.")
-                except Exception as dup_e:
-                    print(f"Warning: Page merge error for record {p_idx+1}: {dup_e}")
+        # ── Export PRINT (Print Layer only, Mock hidden) ─────────────────────────
+        print("[STAGE] Exporting COMBINED PRINT-READY PAYLOAD...")
+        for li in range(1, master_page.Layers.Count + 1):
+            lyr = master_page.Layers.Item(li)
+            lu  = lyr.Name.upper()
+            if "PRINT" in lu and "MOCK" not in lu:
+                lyr.Printable = True
+                lyr.Visible   = True
+            else:
+                lyr.Printable = False
+                lyr.Visible   = False
 
-                src_doc.Dirty = False
-                src_doc.Close()
+        master_doc.PublishToPDF(print_path)
+        print(f"Combined print PDF saved: {print_path}")
+        _heartbeat("PRINT PDF exported")
 
-
-            # Export PREVIEW: all layers visible except Guides
-            print("Exporting COMBINED VERIFICATION PREVIEW...")
-            for pg_idx in range(1, master_doc.Pages.Count + 1):
-                pg = master_doc.Pages.Item(pg_idx)
-                _set_layer_visibility(pg, "PRINT LAYER", printable=True,  visible=True)
-                _set_layer_visibility(pg, "MOCK LAYER",  printable=True,  visible=True)
-                _set_layer_visibility(pg, "GUIDES",       printable=False, visible=False)
-
-            master_doc.ClearSelection()
-            pdf_settings = master_doc.PDFSettings
-            pdf_settings.PublishRange = 0
-            pdf_settings.ColorMode = 1
-            master_doc.PublishToPDF(preview_path)
-            print(f"Combined preview PDF saved: {preview_path}")
-
-            # Export PRINT: Print Layer only, Mock + Guides hidden
-            print("Exporting COMBINED PRINT-READY PAYLOAD...")
-            for pg_idx in range(1, master_doc.Pages.Count + 1):
-                pg = master_doc.Pages.Item(pg_idx)
-                _set_layer_visibility(pg, "PRINT LAYER", printable=True,  visible=True)
-                _set_layer_visibility(pg, "MOCK LAYER",  printable=False, visible=False)
-                _set_layer_visibility(pg, "GUIDES",       printable=False, visible=False)
-
-            master_doc.PublishToPDF(print_path)
-            print(f"Combined print PDF saved: {print_path}")
-
-            master_doc.Dirty = False
-            master_doc.Close()
-            print(f"Silenced PDF exports achieved. {total_records}/{total_records} records exported.")
-            return True
+        master_doc.Dirty = False
+        master_doc.Close()
+        print(f"Silenced PDF exports achieved. {total_records}/{total_records} records exported.")
+        return True
 
     except Exception as e:
         print(f"Print Merge Error: {e}")

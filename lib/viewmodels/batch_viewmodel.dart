@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:collection/collection.dart';
+import '../services/backend_service.dart';
 import '../utils/input_sanitizer.dart';
 import '../services/cleanup_service.dart';
 import '../viewmodels/settings_viewmodel.dart';
@@ -94,16 +96,16 @@ class BatchViewModel extends ChangeNotifier {
       await file.writeAsBytes(bytes);
 
       final String projectRoot = Directory.current.path;
-      final exePath = '$projectRoot/python_engine/Core/dist/orchestrator.exe';
+      final exePath = BackendService.instance.executablePath;
       final configPath = '${docsDir.path}/PlakaMatik Files/config.json';
-      
+
       List<String> pyArgs = ['--config', configPath];
 
       final process = await Process.run(
         exePath,
         pyArgs,
         workingDirectory: '$projectRoot/python_engine/Core',
-      ).timeout(const Duration(seconds: 45));
+      ).timeout(const Duration(seconds: 120));
 
       if (process.exitCode == 0) {
         // Scan the Outputs folder for _PREVIEW.pdf files matching this session
