@@ -20,7 +20,7 @@ def _set_layer_visibility(page, layer_name_upper, printable, visible):
             except Exception as e:
                 print(f"Warning: Could not set layer '{lyr.Name}' visibility: {e}")
             return
-    print(f"Note: Layer '{layer_name_upper}' not present on this page.")
+    print(f"Warning: Layer '{layer_name_upper}' not found on page.")
 
 
 def _inject_text(corel_app, template_path, record_data, p_type):
