@@ -94,8 +94,8 @@ flutter:
 
 msix_config:
   display_name: PlakaMatik
-  publisher_display_name: JedImsonca
-  identity_name: com.jedimsonca.plakamatic
+  publisher_display_name: JedImsonDev
+  identity_name: com.jedimsonca.plakamatik
   msix_version: 1.0.0.0
   capabilities: runFullTrust, internetClient
   logo_path: assets/icon.png
