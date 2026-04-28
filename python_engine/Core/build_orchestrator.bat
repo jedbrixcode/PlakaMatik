@@ -10,7 +10,7 @@ cd /D "%~dp0"
 :: Set the destination path variable
 set "DEST_FOLDER=C:\Users\Window 10\Documents\Jed Internship\Project\plakamatic_flutterui\assets"
 
-:: Ensure PyInstaller is installed
+:: Ensure PyInstaller and required Python packages are installed
 python -m pip install pyinstaller
 
 :: Compile the Python script

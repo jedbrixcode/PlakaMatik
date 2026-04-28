@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:collection/collection.dart';
 import '../services/backend_service.dart';
 import '../utils/input_sanitizer.dart';
 import '../services/cleanup_service.dart';
@@ -108,22 +107,17 @@ class BatchViewModel extends ChangeNotifier {
       ).timeout(const Duration(seconds: 120));
 
       if (process.exitCode == 0) {
-        // Scan the Outputs folder for _PREVIEW.pdf files matching this session
-        final outputsDir = Directory('${docsDir.path}/PlakaMatik Files/Outputs');
-        final sessionPreviews = outputsDir
-            .listSync()
-            .where((f) => f.path.endsWith('_PREVIEW.pdf'))
-            .toList();
-        sessionPreviews.sort(
-          (a, b) => a.statSync().modified.compareTo(b.statSync().modified),
-        );
-
-        // Assign preview paths to each chunk plate in order
-        for (int i = 0; i < currentChunk.length; i++) {
-          final globalIndex = currentRunIndex + i;
-          if (sessionPreviews.length > i) {
-            printQueue[globalIndex].previewPath = sessionPreviews[sessionPreviews.length - currentChunk.length + i].path;
+        // The Python engine generates exactly ONE combined A3 preview for this chunk
+        String targetPreview = '${docsDir.path}/PlakaMatik Files/Outputs/${cleanupService.currentSessionId}_PREVIEW.pdf';
+        
+        if (File(targetPreview).existsSync()) {
+          // Assign the same A3 preview to all plates in this chunk
+          for (int i = 0; i < currentChunk.length; i++) {
+            final globalIndex = currentRunIndex + i;
+            printQueue[globalIndex].previewPath = targetPreview;
           }
+        } else {
+           errorMessage = "PDF Export failed. No output detected.";
         }
 
         currentRunIndex = endIndex;
@@ -165,8 +159,9 @@ class BatchViewModel extends ChangeNotifier {
       final String projectRoot = Directory.current.path;
       final exePath = '$projectRoot/python_engine/Core/dist/orchestrator.exe';
       final docsDir = await getApplicationDocumentsDirectory();
-      
-      String targetPdf = '${docsDir.path}/PlakaMatik Files/Outputs/${cleanupService.currentSessionId}_PRINT.pdf';
+
+      String targetPdf =
+          '${docsDir.path}/PlakaMatik Files/Outputs/${cleanupService.currentSessionId}_PRINT.pdf';
       final configPath = '${docsDir.path}/PlakaMatik Files/config.json';
 
       final process = await Process.run(
