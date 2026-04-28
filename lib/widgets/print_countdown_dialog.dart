@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import '../services/backend_service.dart';
 import '../viewmodels/settings_viewmodel.dart';
 
 /// Universal print countdown dialog.
@@ -72,11 +73,11 @@ class _PrintCountdownDialogState extends State<PrintCountdownDialog> {
     });
 
     try {
-      final docsDir = await getApplicationDocumentsDirectory();
-      final outputsDir = Directory('${docsDir.path}/PlakaMatik Files/Outputs');
-      final configPath = '${docsDir.path}/PlakaMatik Files/config.json';
+      final docsDir     = await getApplicationDocumentsDirectory();
+      final outputsDir  = Directory('${docsDir.path}/PlakaMatik Files/Outputs');
+      final configPath  = '${docsDir.path}/PlakaMatik Files/config.json';
       final projectRoot = Directory.current.path;
-      final exePath = '$projectRoot/python_engine/Core/dist/orchestrator.exe';
+      final exePath     = BackendService.instance.executablePath;
 
       // Find the latest _PRINT.pdf
       File? printFile;

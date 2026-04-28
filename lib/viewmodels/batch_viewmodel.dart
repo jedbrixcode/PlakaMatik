@@ -107,20 +107,33 @@ class BatchViewModel extends ChangeNotifier {
       ).timeout(const Duration(seconds: 120));
 
       if (process.exitCode == 0) {
-        // The Python engine generates exactly ONE combined A3 preview for this chunk
-        String targetPreview = '${docsDir.path}/PlakaMatik Files/Outputs/${cleanupService.currentSessionId}_PREVIEW.pdf';
-        
-        if (File(targetPreview).existsSync()) {
-          // Assign the same A3 preview to all plates in this chunk
+        // Scan for the most recently modified *_PREVIEW.pdf in the Outputs folder.
+        // We scan rather than using a fixed name because the Python engine's
+        // session timestamp may differ by a few seconds from Flutter's.
+        final outputsDir = Directory('${docsDir.path}/PlakaMatik Files/Outputs');
+        List<FileSystemEntity> previews = [];
+        if (outputsDir.existsSync()) {
+          previews = outputsDir
+              .listSync()
+              .where((f) => f is File && f.path.endsWith('_PREVIEW.pdf'))
+              .toList()
+            ..sort((a, b) =>
+                b.statSync().modified.compareTo(a.statSync().modified));
+        }
+
+        if (previews.isNotEmpty) {
+          final latestPreview = previews.first.path;
+          // Assign the same combined A3 preview to all plates in this chunk
           for (int i = 0; i < currentChunk.length; i++) {
             final globalIndex = currentRunIndex + i;
-            printQueue[globalIndex].previewPath = targetPreview;
+            printQueue[globalIndex].previewPath = latestPreview;
           }
         } else {
-           errorMessage = "PDF Export failed. No output detected.";
+          errorMessage = 'PDF Export failed. No output detected.';
         }
 
         currentRunIndex = endIndex;
+
 
         // Save bookmark of the last printed plate from this chunk
         if (currentChunk.isNotEmpty) {

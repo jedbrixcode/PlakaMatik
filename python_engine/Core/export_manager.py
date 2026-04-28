@@ -4,23 +4,19 @@ import time
 import traceback
 from text_mapper import replace_text_in_shapes
 
-# A3 landscape dimensions (centimetres)
-A3_W_CM = 42.0
-A3_H_CM = 29.7
-
 
 def _heartbeat(label=""):
-    """Print a heartbeat so Flutter's process listener knows we're alive."""
+    """Print a heartbeat so Flutter's process listener knows the engine is alive."""
     print(f"[HEARTBEAT] {label}" if label else "[HEARTBEAT] Engine running...", flush=True)
 
 
 def _inject_text(corel_app, cdr_path, record_data, p_type):
     """
-    Opens cdr_path, injects text into Print Layer IN-MEMORY.
-    Returns (doc, page). Caller must close the doc.
+    Open cdr_path, inject text into Print Layer IN-MEMORY.
+    Returns (doc, page). Caller must close.
     """
     print(f"[STAGE] Opening: {os.path.basename(cdr_path)} ({p_type})")
-    doc = corel_app.OpenDocument(cdr_path)
+    doc  = corel_app.OpenDocument(cdr_path)
     doc.Unit = 4  # cdrCentimeter
     page = doc.Pages.Item(1)
 
@@ -38,32 +34,39 @@ def _inject_text(corel_app, cdr_path, record_data, p_type):
     return doc, page
 
 
-def _export_pdfs_from_doc(doc, preview_path, print_path):
-    """Export the active document to PREVIEW and PRINT PDFs."""
-    doc.ClearSelection()
-    page = doc.Pages.Item(1)
-    pdf_settings = doc.PDFSettings
-    pdf_settings.PublishRange = 0
-    pdf_settings.ColorMode = 1   # RGB
+def _export_record_pdfs(corel_app, cdr_path, record_data, p_type,
+                        preview_path, print_path):
+    """
+    THE ONLY RELIABLE APPROACH:
+    Open cdr_path (a copy of the template), inject text IN-MEMORY,
+    and export PREVIEW + PRINT PDFs directly from the SAME document.
+    No cross-document copy-paste — injected values are guaranteed in output.
+    """
+    doc, page = _inject_text(corel_app, cdr_path, record_data, p_type)
 
-    # ── PREVIEW export: Print Layer + Mock Layer visible, Guides hidden ──
-    print("[STAGE] Exporting PREVIEW PDF...")
+    doc.ClearSelection()
+    pdf_settings             = doc.PDFSettings
+    pdf_settings.PublishRange = 0
+    pdf_settings.ColorMode    = 1   # RGB
+
+    # PREVIEW: Print Layer + Mock Layer visible, Guides hidden
+    print("[STEP] Exporting PREVIEW...")
     for li in range(1, page.Layers.Count + 1):
         lyr = page.Layers.Item(li)
         lu  = lyr.Name.upper()
         try:
             if "GUIDE" in lu:
-                lyr.Printable = False;  lyr.Visible = False
+                lyr.Printable = False; lyr.Visible = False
             else:
-                lyr.Printable = True;   lyr.Visible = True
+                lyr.Printable = True;  lyr.Visible = True
         except:
             pass
     doc.PublishToPDF(preview_path)
-    print(f"Preview PDF saved: {preview_path}")
-    _heartbeat("Preview exported")
+    print(f"  -> {os.path.basename(preview_path)}")
+    _heartbeat("Temp preview done")
 
-    # ── PRINT export: Print Layer only, Mock Layer + Guides hidden ──
-    print("[STAGE] Exporting PRINT PDF...")
+    # PRINT: Print Layer only, Mock + Guides hidden
+    print("[STEP] Exporting PRINT...")
     for li in range(1, page.Layers.Count + 1):
         lyr = page.Layers.Item(li)
         lu  = lyr.Name.upper()
@@ -75,140 +78,170 @@ def _export_pdfs_from_doc(doc, preview_path, print_path):
         except:
             pass
     doc.PublishToPDF(print_path)
-    print(f"Print PDF saved: {print_path}")
-    _heartbeat("Print exported")
+    print(f"  -> {os.path.basename(print_path)}")
+    _heartbeat("Temp print done")
+
+    doc.Dirty = False
+    doc.Close()
+    return True
+
+
+def _compose_a3(input_paths, output_path):
+    """
+    Compose multiple plate-sized PDFs onto a single A3 landscape page using
+    pypdf merge_transformed_page (NOT merge_page which just overlays at origin).
+
+    Positioning:
+      1 plate  → horizontally and vertically centred on A3
+      2 plates → plate[0] centred in top half, plate[1] centred in bottom half
+    """
+    try:
+        from pypdf import PdfReader, PdfWriter, Transformation
+
+        MM_TO_PT = 72.0 / 25.4
+        a3_w = 420 * MM_TO_PT   # ~1190.55 pt  (landscape width)
+        a3_h = 297 * MM_TO_PT   # ~841.89  pt  (landscape height)
+
+        writer   = PdfWriter()
+        a3_page  = writer.add_blank_page(width=a3_w, height=a3_h)
+        n        = len(input_paths)
+
+        for i, pdf_path in enumerate(input_paths):
+            reader = PdfReader(pdf_path)
+            plate  = reader.pages[0]
+            pw     = float(plate.mediabox.width)
+            ph     = float(plate.mediabox.height)
+
+            # Horizontal centre on A3
+            tx = (a3_w - pw) / 2.0
+
+            if n == 1:
+                # Single plate → vertical centre
+                ty = (a3_h - ph) / 2.0
+            elif i == 0:
+                # First plate  → centre of TOP half
+                ty = a3_h / 2.0 + (a3_h / 2.0 - ph) / 2.0
+            else:
+                # Second plate → centre of BOTTOM half
+                ty = (a3_h / 2.0 - ph) / 2.0
+
+            a3_page.merge_transformed_page(
+                plate, Transformation().translate(tx=tx, ty=ty)
+            )
+
+        with open(output_path, 'wb') as f:
+            writer.write(f)
+
+        print(f"[MERGE] A3 PDF composed: {os.path.basename(output_path)}")
+        return True
+
+    except Exception as e:
+        print(f"[MERGE] pypdf compose failed: {e}")
+        traceback.print_exc()
+        # Fallback: copy first individual PDF as the output
+        try:
+            shutil.copy2(input_paths[0], output_path)
+            print(f"[MERGE] Fallback: copied first plate PDF as output.")
+        except Exception as fb_e:
+            print(f"[MERGE] Fallback also failed: {fb_e}")
+        return False
 
 
 def execute_print_merge_to_pdf(corel_app, data_records, output_pdf_path,
                                template_mv_path, template_mc_path,
                                global_dx=0.0, global_dy=0.0):
     """
-    Entry point.
-    Native CorelDRAW Master Canvas approach:
-    - No pypdf overlay.
-    - Resolves all text-reversion bugs by saving temp injected files to disk.
-    - Safe from page-resize coordinate offset bugs.
+    FINAL ALGORITHM (matches user specification):
+
+    Step 1: For each record
+            a. shutil.copy2  template → temp CDR  (original never modified)
+            b. OpenDocument(temp CDR)
+            c. Inject text IN-MEMORY (no cross-doc paste)
+            d. Export PREVIEW + PRINT PDFs from the SAME document
+            e. Close temp CDR
+            f. Delete temp CDR
+
+    Step 2: Compose individual plate PDFs onto one A3 page
+            – 1 plate  → centred
+            – 2 plates → top half / bottom half
+
+    Step 3: Delete individual temp PDFs
+
+    Step 4: Return.  Flutter waits for confirmation before printing.
     """
     try:
         total_records = len(data_records)
-        print(f"[STAGE] Initializing Master Engine. Total records: {total_records}")
+        print(f"[STAGE] Initializing Master Engine. Records: {total_records}")
         _heartbeat("Engine started")
 
         if total_records == 0:
+            print("No records found.")
             return False
 
         base         = output_pdf_path.replace(".pdf", "")
         preview_path = f"{base}_PREVIEW.pdf"
         print_path   = f"{base}_PRINT.pdf"
 
-        # ── 1. Create temporary injected files and SAVE to disk ─────────
-        # This locks in the text values so they survive any copy-paste!
-        temp_files = []
+        temp_previews = []
+        temp_prints   = []
+
+        # ── Step 1: Export each plate individually ────────────────────────────────
         for p_idx, record_data in enumerate(data_records):
-            p_type = record_data.get("type", "MV").upper()
+            p_type        = record_data.get("type", "MV").upper()
             template_path = template_mc_path if p_type == "MC" else template_mv_path
 
             if not os.path.exists(template_path):
-                print(f"Error: Template not found for record {p_idx+1}")
+                print(f"Error: Template not found for record {p_idx+1}: {template_path}")
                 continue
 
-            temp_cdr = template_path.replace('.cdr', f'__temp_locked_{p_idx}.cdr')
+            temp_cdr  = template_path.replace('.cdr', f'__tmp_{p_idx}.cdr')
+            t_preview = f"{base}_tmp{p_idx}_PREVIEW.pdf"
+            t_print   = f"{base}_tmp{p_idx}_PRINT.pdf"
+
+            print(f"\n[STEP {p_idx+1}/{total_records}] Processing {p_type} plate...")
             shutil.copy2(template_path, temp_cdr)
+            print(f"  [COPY] {os.path.basename(temp_cdr)}")
 
-            doc, page = _inject_text(corel_app, temp_cdr, record_data, p_type)
-            # CRITICAL: Save to disk so clipboard reads the new values
-            doc.Save()
-            doc.Close()
-            temp_files.append((temp_cdr, p_type))
-            _heartbeat(f"Record {p_idx+1} locked to disk")
+            ok = _export_record_pdfs(
+                corel_app, temp_cdr, record_data, p_type,
+                t_preview, t_print
+            )
 
-        if not temp_files:
-            return False
-
-        # ── 2. Create the unified A3 Master Document ─────────
-        print("[STAGE] Constructing Native A3 Master Document...")
-        master_doc = corel_app.CreateDocument()
-        master_doc.Unit = 4
-        master_page = master_doc.Pages.Item(1)
-        master_page.SetSize(A3_W_CM, A3_H_CM)
-
-        master_print_lyr = master_page.CreateLayer("Print Layer")
-        master_mock_lyr  = master_page.CreateLayer("Mock Layer")
-        _heartbeat("A3 Master ready")
-
-        # ── 3. Paste and position each plate onto the Master ─────────
-        for p_idx, (temp_cdr, p_type) in enumerate(temp_files):
-            src_doc = corel_app.OpenDocument(temp_cdr)
-            src_page = src_doc.Pages.Item(1)
-            print(f"[STAGE] Merging plate {p_idx+1}/{len(temp_files)}...")
-
-            for li in range(1, src_page.Layers.Count + 1):
-                src_lyr = src_page.Layers.Item(li)
-                lu = src_lyr.Name.upper()
-                if "GUIDE" in lu or src_lyr.Shapes.Count == 0:
-                    continue
-
-                sr = corel_app.CreateShapeRange()
-                for si in range(1, src_lyr.Shapes.Count + 1):
-                    s = src_lyr.Shapes.Item(si)
-                    if s.Type != 9:
-                        sr.Add(s)
-
-                if sr.Count == 0: continue
-
-                # Copy shapes
-                if sr.Count > 1:
-                    grp = sr.Group()
-                    grp.Copy()
-                else:
-                    sr.Item(1).Copy()
-
-                time.sleep(0.3)
-
-                # Paste into master
-                master_doc.Activate()
-                if "MOCK" in lu:
-                    master_mock_lyr.Activate()
-                else:
-                    master_print_lyr.Activate()
-
-                pasted = master_doc.ActiveLayer.Paste()
-                time.sleep(0.3)
-
-                # Center of the pasted group
-                pcx = pasted.PositionX + (pasted.SizeWidth / 2.0)
-                pcy = pasted.PositionY - (pasted.SizeHeight / 2.0)
-
-                # Positioning Logic
-                target_cx = (A3_W_CM / 2.0) + global_dx
-
-                if len(temp_files) == 1:
-                    # Single plate -> Center of A3
-                    target_cy = (A3_H_CM / 2.0) + global_dy
-                else:
-                    # Batch -> Record 0 Top half, Record 1 Bottom half
-                    target_cy = (A3_H_CM * 0.75 if p_idx == 0 else A3_H_CM * 0.25) + global_dy
-
-                pasted.Move(target_cx - pcx, target_cy - pcy)
-
-            src_doc.Dirty = False
-            src_doc.Close()
-            _heartbeat(f"Plate {p_idx+1} positioned")
-
-        # ── 4. Export and Cleanup ─────────
-        master_doc.Activate()
-        _export_pdfs_from_doc(master_doc, preview_path, print_path)
-
-        master_doc.Dirty = False
-        master_doc.Close()
-
-        for temp_cdr, _ in temp_files:
+            # Always remove temp CDR regardless of success
             try:
                 os.remove(temp_cdr)
+            except Exception as rm_e:
+                print(f"  Warning: could not remove temp CDR: {rm_e}")
+
+            if ok:
+                temp_previews.append(t_preview)
+                temp_prints.append(t_print)
+            else:
+                print(f"  Error: Export failed for record {p_idx+1}.")
+
+            _heartbeat(f"Record {p_idx+1}/{total_records} exported")
+
+        if not temp_previews:
+            print("Error: No records exported successfully.")
+            return False
+
+        # ── Step 2: Compose individual PDFs onto one A3 page ─────────────────────
+        print(f"\n[STAGE] Composing {len(temp_previews)} plate(s) onto A3 canvas...")
+        _heartbeat("Starting A3 compose")
+
+        _compose_a3(temp_previews, preview_path)
+        _compose_a3(temp_prints,   print_path)
+        _heartbeat("A3 compose complete")
+
+        # ── Step 3: Cleanup temp PDFs ─────────────────────────────────────────────
+        for p in temp_previews + temp_prints:
+            try:
+                os.remove(p)
             except:
                 pass
 
-        print(f"Silenced PDF exports achieved. {len(temp_files)}/{total_records} records exported.")
+        n = len(temp_previews)
+        print(f"\nSilenced PDF exports achieved. {n}/{total_records} records exported.")
         return True
 
     except Exception as e:

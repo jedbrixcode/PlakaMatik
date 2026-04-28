@@ -9,9 +9,13 @@ class CorelAutomator:
         self.doc = None
 
     # Trial screen bypass
-    def bypass_trial_screen(self):
-        print("waiting for the trial screen...")
-        time.sleep(5)
+    def bypass_trial_screen(self, delay=5):
+        if delay <= 0:
+            print("Trial screen bypass disabled (delay=0). Skipping.")
+            return
+
+        print(f"waiting {delay}s for the trial screen...")
+        time.sleep(delay)
         pyautogui.hotkey('alt', 'z')
         print('Trial screen bypassed')
 

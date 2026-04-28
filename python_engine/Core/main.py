@@ -34,6 +34,7 @@ def run_pipeline(args):
     # 2. JSON Bridge Configuration Integration
     dynamic_config = load_config(args.config)
     is_visible = dynamic_config["CORELDRAW_VISIBLE"]
+    trial_bypass_delay = dynamic_config.get("TRIAL_BYPASS_DELAY", 5)
     global_dx = dynamic_config["GLOBAL_OFFSETS"].get("dx", 0.0)
     global_dy = dynamic_config["GLOBAL_OFFSETS"].get("dy", 0.0)
     printer_name = dynamic_config.get("PRINTER_NAME", "Microsoft Print to PDF")
@@ -52,7 +53,7 @@ def run_pipeline(args):
 
     # 3. Initialize the automation engine natively
     automator = CorelAutomator()
-    automator.bypass_trial_screen()
+    automator.bypass_trial_screen(delay=trial_bypass_delay)
     
     # 4. Connect to Corel DRAW securely via pipeline
     if automator.connect():

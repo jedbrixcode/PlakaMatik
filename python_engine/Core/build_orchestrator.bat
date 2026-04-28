@@ -11,11 +11,11 @@ cd /D "%~dp0"
 set "DEST_FOLDER=C:\Users\Window 10\Documents\Jed Internship\Project\plakamatic_flutterui\assets"
 
 :: Ensure PyInstaller and required Python packages are installed
-python -m pip install pyinstaller
+python -m pip install pyinstaller pypdf
 
 :: Compile the Python script
 :: --noconsole para invisible, --onefile para compact
-python -m PyInstaller --noconsole --onefile --name "orchestrator" main.py
+python -m PyInstaller --noconsole --onefile --name "orchestrator" --hidden-import=pypdf main.py
 
 if %ERRORLEVEL% NEQ 0 (
     echo.

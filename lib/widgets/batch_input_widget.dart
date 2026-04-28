@@ -46,11 +46,11 @@ class _BatchInputWidgetState extends State<BatchInputWidget> {
               ),
             ),
             const SizedBox(height: 15),
-            if (_selectedType == 'MV')
+            if (_selectedType == 'MV' || _selectedType == 'MC')
               TextField(
                 controller: _idController,
                 decoration: InputDecoration(
-                  labelText: 'Plate Identifier',
+                  labelText: _selectedType == 'MC' ? 'MC Plate Number' : 'Plate Identifier',
                   filled: true,
                   fillColor: Colors.grey[100],
                   border: OutlineInputBorder(
@@ -59,9 +59,10 @@ class _BatchInputWidgetState extends State<BatchInputWidget> {
                   ),
                 ),
               ),
-            if (_selectedType == 'MV') const SizedBox(height: 15),
-            TextField(
-              controller: _desigController,
+            if (_selectedType == 'MV') ...[
+              const SizedBox(height: 15),
+              TextField(
+                controller: _desigController,
               decoration: InputDecoration(
                 labelText: 'Designation / Region',
                 filled: true,
@@ -72,6 +73,7 @@ class _BatchInputWidgetState extends State<BatchInputWidget> {
                 ),
               ),
             ),
+            ],
             const SizedBox(height: 15),
             DropdownButtonFormField<String>(
               value: _selectedType,
@@ -117,9 +119,15 @@ class _BatchInputWidgetState extends State<BatchInputWidget> {
                 ),
               ),
               onPressed: () {
-                bool isValid = _desigController.text.isNotEmpty;
-                if (_selectedType == 'MV' && _idController.text.isEmpty) {
-                  isValid = false;
+                bool isValid = true;
+                if (_selectedType == 'MV') {
+                  if (_idController.text.isEmpty || _desigController.text.isEmpty) {
+                    isValid = false;
+                  }
+                } else if (_selectedType == 'MC') {
+                  if (_idController.text.isEmpty) {
+                    isValid = false;
+                  }
                 }
                 if (isValid) {
                   viewModel.addToQueue(
@@ -127,8 +135,9 @@ class _BatchInputWidgetState extends State<BatchInputWidget> {
                     _desigController.text,
                     _selectedType,
                   );
-                  _idController.clear();
                   // We purposefully leave _desigController uncleared for quick batching
+                  // But we clear the identifier
+                  _idController.clear();
                 }
               },
             ),

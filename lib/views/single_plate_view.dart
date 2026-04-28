@@ -305,7 +305,8 @@ class _SinglePlateViewState extends State<SinglePlateView> {
                 const BorderRadius.vertical(top: Radius.circular(15)),
             child: SfPdfViewer.file(
               File(_previewPath!),
-              key: ValueKey(_previewPath),
+              key: ValueKey(
+                  File(_previewPath!).lastModifiedSync().millisecondsSinceEpoch),
               canShowScrollHead: false,
               canShowScrollStatus: false,
             ),

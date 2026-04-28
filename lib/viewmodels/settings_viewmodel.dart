@@ -14,6 +14,7 @@ class SettingsViewModel extends ChangeNotifier {
   bool isVisibleCorel = false;
   String selectedPrinter = 'Default';
   List<String> availablePrinters = ['Default'];
+  int trialBypassDelay = 5;
 
   SettingsViewModel() {
     _loadSettings();
@@ -29,6 +30,7 @@ class SettingsViewModel extends ChangeNotifier {
     isDarkMode = prefs.getBool('isDarkMode') ?? false;
     isVisibleCorel = prefs.getBool('isVisibleCorel') ?? false;
     selectedPrinter = prefs.getString('selectedPrinter') ?? 'Default';
+    trialBypassDelay = prefs.getInt('trialBypassDelay') ?? 5;
 
     await _fetchPrinters();
     notifyListeners();
@@ -72,6 +74,7 @@ class SettingsViewModel extends ChangeNotifier {
     await prefs.setBool('isDarkMode', isDarkMode);
     await prefs.setBool('isVisibleCorel', isVisibleCorel);
     await prefs.setString('selectedPrinter', selectedPrinter);
+    await prefs.setInt('trialBypassDelay', trialBypassDelay);
     notifyListeners();
   }
 
@@ -88,6 +91,7 @@ class SettingsViewModel extends ChangeNotifier {
       final payload = {
         "PRINTER_NAME": selectedPrinter,
         "CORELDRAW_VISIBLE": isVisibleCorel,
+        "TRIAL_BYPASS_DELAY": trialBypassDelay,
         "GLOBAL_OFFSETS": {
           "dx": globalDxOffset,
           "dy": globalDyOffset
@@ -114,6 +118,7 @@ class SettingsViewModel extends ChangeNotifier {
       globalDyOffset = 0.0;
       isDarkMode = false;
       isVisibleCorel = false;
+      trialBypassDelay = 5;
       saveSettingsRich();
     } catch (e) {
       debugPrint("Failed to wipe config bridge: $e");
@@ -142,6 +147,11 @@ class SettingsViewModel extends ChangeNotifier {
 
   void adjustDy(double delta) {
     globalDyOffset += delta;
+    saveSettingsRich();
+  }
+
+  void updateTrialBypassDelay(int val) {
+    trialBypassDelay = val;
     saveSettingsRich();
   }
 }

@@ -123,6 +123,10 @@ class SettingsView extends StatelessWidget {
                           viewModel.isVisibleCorel,
                           (v) => viewModel.updateVisibleCorel(v),
                         ),
+                        _buildTrialBypassDelayRow(
+                          'Trial Screen Bypass Delay (Seconds)',
+                          viewModel,
+                        ),
                         const SizedBox(height: 10),
                         _buildStatusRow(
                           'Font Integrity Check (Edigna Medium)',
@@ -422,6 +426,50 @@ class SettingsView extends StatelessWidget {
                       ),
                     ),
                   ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrialBypassDelayRow(
+    String label,
+    SettingsViewModel vm,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 16)),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove, size: 18),
+                  onPressed: () {
+                    if (vm.trialBypassDelay > 0) {
+                      vm.updateTrialBypassDelay(vm.trialBypassDelay - 1);
+                    }
+                  },
+                ),
+                Text(
+                  vm.trialBypassDelay.toString(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add, size: 18),
+                  onPressed: () => vm.updateTrialBypassDelay(vm.trialBypassDelay + 1),
                 ),
               ],
             ),
