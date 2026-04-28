@@ -91,15 +91,3 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
-
-msix_config:
-  display_name: PlakaMatik
-  publisher_display_name: JedImsonDev
-  identity_name: com.jedimsonca.plakamatik
-  msix_version: 1.0.0.0
-  capabilities: runFullTrust, internetClient
-  logo_path: assets/icon.png
-  start_menu_icon_path: assets/icon.png
-  tile_icon_path: assets/icon.png
-  vs_generated_images_path: assets/
-  install_certificate: false

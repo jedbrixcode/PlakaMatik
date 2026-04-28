@@ -14,19 +14,14 @@ class BatchPreviewWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<BatchViewModel>(context);
-    final settings  = Provider.of<SettingsViewModel>(context);
+    final settings = Provider.of<SettingsViewModel>(context);
 
-    String? previewPath;
-    // Check if the current chunk has a preview path assigned from a successful python execution
-    if (viewModel.printQueue.isNotEmpty &&
-        viewModel.currentRunIndex < viewModel.printQueue.length) {
-      previewPath = viewModel.printQueue[viewModel.currentRunIndex].previewPath;
-    }
-
+    String? previewPath = viewModel.latestBatchPreviewPath;
     File? latestPreview = previewPath != null ? File(previewPath) : null;
 
     final bool hasPreview = latestPreview != null && latestPreview.existsSync();
-    final bool moreRemaining = viewModel.currentRunIndex < viewModel.printQueue.length;
+    final bool moreRemaining =
+        viewModel.currentRunIndex < viewModel.printQueue.length;
 
     return Container(
       decoration: BoxDecoration(
@@ -53,9 +48,10 @@ class BatchPreviewWidget extends StatelessWidget {
                       top: Radius.circular(15),
                     ),
                     child: SfPdfViewer.file(
-                      latestPreview!,
+                      latestPreview,
                       key: ValueKey(
-                          latestPreview.lastModifiedSync().millisecondsSinceEpoch),
+                        '${latestPreview.path}_${latestPreview.lastModifiedSync().millisecondsSinceEpoch}',
+                      ),
                       canShowScrollHead: false,
                       canShowScrollStatus: false,
                     ),
@@ -65,10 +61,13 @@ class BatchPreviewWidget extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.green.shade50,
                     borderRadius: const BorderRadius.vertical(
-                        bottom: Radius.circular(15)),
+                      bottom: Radius.circular(15),
+                    ),
                   ),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 15),
+                    horizontal: 20,
+                    vertical: 15,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -85,13 +84,17 @@ class BatchPreviewWidget extends StatelessWidget {
                           Text(
                             'Target: ${settings.selectedPrinter}',
                             style: const TextStyle(
-                                fontSize: 10, color: Colors.grey),
+                              fontSize: 10,
+                              color: Colors.grey,
+                            ),
                           ),
                           if (moreRemaining)
                             Text(
                               '${viewModel.printQueue.length - viewModel.currentRunIndex} plate(s) still in queue',
                               style: const TextStyle(
-                                  fontSize: 10, color: Colors.orange),
+                                fontSize: 10,
+                                color: Colors.orange,
+                              ),
                             ),
                         ],
                       ),
@@ -99,7 +102,9 @@ class BatchPreviewWidget extends StatelessWidget {
                         style: FilledButton.styleFrom(
                           backgroundColor: const Color(0xFF1E3A5F),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 30, vertical: 15),
+                            horizontal: 30,
+                            vertical: 15,
+                          ),
                         ),
                         onPressed: () => PrintCountdownDialog.show(
                           context,
@@ -110,7 +115,10 @@ class BatchPreviewWidget extends StatelessWidget {
                             // Check if more plates remain in the queue
                             if (moreRemaining) {
                               _showBedClearanceDialog(
-                                  context, viewModel, settings);
+                                context,
+                                viewModel,
+                                settings,
+                              );
                             } else {
                               onInterlockTriggered();
                             }
@@ -163,12 +171,13 @@ class BatchPreviewWidget extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Not yet',
-                style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'Not yet',
+              style: TextStyle(color: Colors.white54),
+            ),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: Colors.orange),
+            style: FilledButton.styleFrom(backgroundColor: Colors.orange),
             onPressed: () {
               Navigator.of(ctx).pop();
               _showContinueQueueDialog(context, viewModel, settings);
@@ -186,8 +195,7 @@ class BatchPreviewWidget extends StatelessWidget {
     BatchViewModel viewModel,
     SettingsViewModel settings,
   ) {
-    final remaining =
-        viewModel.printQueue.length - viewModel.currentRunIndex;
+    final remaining = viewModel.printQueue.length - viewModel.currentRunIndex;
 
     showDialog(
       context: context,
@@ -219,12 +227,15 @@ class BatchPreviewWidget extends StatelessWidget {
               Navigator.of(ctx).pop();
               onInterlockTriggered(); // Exit to queue view
             },
-            child: const Text('Stop Queue',
-                style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'Stop Queue',
+              style: TextStyle(color: Colors.white54),
+            ),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF1E3A5F)),
+              backgroundColor: const Color(0xFF1E3A5F),
+            ),
             onPressed: () {
               Navigator.of(ctx).pop();
               // Process next chunk — this triggers the rebuild

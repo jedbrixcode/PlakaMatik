@@ -306,7 +306,7 @@ class _SinglePlateViewState extends State<SinglePlateView> {
             child: SfPdfViewer.file(
               File(_previewPath!),
               key: ValueKey(
-                  File(_previewPath!).lastModifiedSync().millisecondsSinceEpoch),
+                  '${_previewPath!}_${File(_previewPath!).lastModifiedSync().millisecondsSinceEpoch}'),
               canShowScrollHead: false,
               canShowScrollStatus: false,
             ),

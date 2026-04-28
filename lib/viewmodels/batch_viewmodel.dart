@@ -29,6 +29,7 @@ class BatchViewModel extends ChangeNotifier {
   List<PlateData> printQueue = [];
   bool isProcessing = false;
   String? errorMessage;
+  String? latestBatchPreviewPath;
   int currentRunIndex = 0;
   final int platesPerRun = 2;
   bool requiresNextRunPrompt = false;
@@ -53,6 +54,15 @@ class BatchViewModel extends ChangeNotifier {
 
   void removeFromQueue(int index) {
     printQueue.removeAt(index);
+    notifyListeners();
+  }
+
+  void clearQueue() {
+    printQueue.clear();
+    currentRunIndex = 0;
+    errorMessage = null;
+    requiresNextRunPrompt = false;
+    latestBatchPreviewPath = null;
     notifyListeners();
   }
 
@@ -123,6 +133,7 @@ class BatchViewModel extends ChangeNotifier {
 
         if (previews.isNotEmpty) {
           final latestPreview = previews.first.path;
+          latestBatchPreviewPath = latestPreview;
           // Assign the same combined A3 preview to all plates in this chunk
           for (int i = 0; i < currentChunk.length; i++) {
             final globalIndex = currentRunIndex + i;
@@ -130,6 +141,7 @@ class BatchViewModel extends ChangeNotifier {
           }
         } else {
           errorMessage = 'PDF Export failed. No output detected.';
+          latestBatchPreviewPath = null;
         }
 
         currentRunIndex = endIndex;

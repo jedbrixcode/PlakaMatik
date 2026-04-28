@@ -75,6 +75,23 @@ class SettingsView extends StatelessWidget {
                         ),
                         const SizedBox(height: 30),
                         _buildSectionHeader('Maintenance & Configuration'),
+                        _buildStatusRow(
+                          'Font Integrity Check (Edigna Medium)',
+                          'INSTALLED',
+                          color: Colors.green,
+                        ),
+                        _buildActionButtonRow(
+                          'Kill CorelDRAW Processes',
+                          'STOP',
+                          () {
+                            Process.run('taskkill', [
+                              '/F',
+                              '/IM',
+                              'CorelDRW.exe',
+                            ]);
+                          },
+                          color: Colors.red,
+                        ),
                         _buildActionButtonRow(
                           'Delete Temporary Files',
                           'DELETE',
@@ -126,24 +143,6 @@ class SettingsView extends StatelessWidget {
                         _buildTrialBypassDelayRow(
                           'Trial Screen Bypass Delay (Seconds)',
                           viewModel,
-                        ),
-                        const SizedBox(height: 10),
-                        _buildStatusRow(
-                          'Font Integrity Check (Edigna Medium)',
-                          'INSTALLED',
-                          color: Colors.green,
-                        ),
-                        _buildActionButtonRow(
-                          'Kill CorelDRAW Processes',
-                          'STOP',
-                          () {
-                            Process.run('taskkill', [
-                              '/F',
-                              '/IM',
-                              'CorelDRW.exe',
-                            ]);
-                          },
-                          color: Colors.red,
                         ),
                         const SizedBox(height: 30),
                         _buildSectionHeader('Calibration & Offset Adjustments'),
@@ -435,12 +434,9 @@ class SettingsView extends StatelessWidget {
     );
   }
 
-  Widget _buildTrialBypassDelayRow(
-    String label,
-    SettingsViewModel vm,
-  ) {
+  Widget _buildTrialBypassDelayRow(String label, SettingsViewModel vm) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -469,7 +465,8 @@ class SettingsView extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.add, size: 18),
-                  onPressed: () => vm.updateTrialBypassDelay(vm.trialBypassDelay + 1),
+                  onPressed: () =>
+                      vm.updateTrialBypassDelay(vm.trialBypassDelay + 1),
                 ),
               ],
             ),
