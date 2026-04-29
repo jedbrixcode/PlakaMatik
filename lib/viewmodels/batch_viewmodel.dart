@@ -201,10 +201,10 @@ class BatchViewModel extends ChangeNotifier {
 
       final process = await Process.run(
         exe,
-        ['--config', cfg, '--action', 'spool', '--pdf', pdf],
+        ['--config', cfg, '--action', 'print_corel', '--pdf', pdf],
         workingDirectory: wDir,
         runInShell: false,
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 120));
 
       if (process.exitCode == 0) {
         requiresNextRunPrompt = true;
@@ -212,13 +212,13 @@ class BatchViewModel extends ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        errorMessage = 'Spooling Error: ${process.stderr.toString().trim()}';
+        errorMessage = 'CorelDRAW Printing Error: ${process.stderr.toString().trim()}';
         isProcessing = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
-      errorMessage = 'Hardware Spooler disconnected: $e';
+      errorMessage = 'CorelDRAW printer automation disconnected: $e';
       isProcessing = false;
       notifyListeners();
       return false;

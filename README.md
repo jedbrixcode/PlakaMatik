@@ -31,7 +31,7 @@ PlakaMatik is a Windows-only desktop automation system that:
 2. Injects the data into CorelDRAW template files (`.cdr`) via Windows COM automation.
 3. Exports a silent, layer-filtered PDF from CorelDRAW.
 4. Composes single or dual-plate **A3 landscape** PDFs using `pypdf`.
-5. Sends the final PDF to a **Canon iX6700** UV inkjet printer via SumatraPDF CLI (GDI pipeline).
+5. Sends the final PDF to a **Canon iX6700** UV inkjet printer via CorelDRAW `PrintOut()` automation (GDI pipeline).
 
 The system operates in two modes:
 - **Single Plate** — one plate per job, immediate preview + print.
@@ -58,7 +58,7 @@ The system operates in two modes:
 │          ──► data_processor.py (parse input.txt)                │
 │          ──► corel_engine.py (CorelDRAW COM via win32com)       │
 │          ──► export_manager.py (pypdf A3 composition)           │
-│          ──► send_to_printer.py (SumatraPDF → Canon iX6700)    │
+│          ──► send_to_printer.py (CorelDRAW PrintOut → Canon iX6700) │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -77,7 +77,6 @@ Flutter writes `config.json` and `input.txt` to the operator's Documents folder 
 | Runtime | Flutter 3.x SDK (for development only) |
 | Python | Python 3.10+ (for rebuilding the engine only) |
 | Inno Setup | Inno Setup 6 (for building the installer) |
-| SumatraPDF | Portable SumatraPDF.exe (placed in `Documents\PlakaMatik Files\bin\`) |
 
 ---
 
@@ -167,7 +166,7 @@ plakamatic_flutterui/
 │       ├── config_manager.py       # Reads/writes config.json bridge
 │       ├── corel_engine.py         # CorelDRAW COM automation
 │       ├── export_manager.py       # PDF export + A3 pypdf composition
-│       ├── send_to_printer.py      # 3-tier spooler (SumatraPDF → ShellExecute)
+│       ├── send_to_printer.py      # CorelDRAW PrintOut PDF printing
 │       ├── data_processor.py       # Parses 4-space delimited input.txt
 │       ├── text_mapper.py          # COM text field injection
 │       ├── engine_logger.py        # Daily rotating log writer
@@ -187,7 +186,7 @@ plakamatic_flutterui/
 - Input fields: **Identifier** (plate number), **Middle** text, **Type** (MV/MC).
 - "Generate" triggers `orchestrator.exe --config config.json`.
 - On success, scans the `Outputs/` folder for the latest `*_PREVIEW.pdf` and displays it inline using `syncfusion_flutter_pdfviewer`.
-- "Print" opens the countdown dialog which dispatches `--action spool`.
+- "Print" opens the countdown dialog which dispatches `--action print_corel`.
 
 ### Batch Print View
 - Drag-and-drop queue of plates with `identifier` and `middle` fields.
@@ -232,7 +231,7 @@ plakamatic_flutterui/
 5. Compose A3 PDF using pypdf merge_transformed_page
    - 1 plate → centered on A3
    - 2 plates → top half + bottom half
-6. On --action spool: send PRINT.pdf to printer via SumatraPDF CLI
+6. On --action print_corel: open the composed A3 master PDF in CorelDRAW and call `doc.PrintOut()`
 ```
 
 ### Trial Screen Bypass
@@ -245,16 +244,15 @@ CorelDRAW 2018 trial builds show a modal dialog on launch. The Python engine:
 
 The delay is configurable from the Flutter Settings UI (0–7+ seconds).
 
-### Spooler Strategy (send_to_printer.py)
-The Canon iX6700 is a **GDI inkjet printer** — it cannot decode raw PDF bytes. The spooler uses a 3-tier strategy:
+### CorelDRAW Printing (send_to_printer.py)
+The Canon iX6700 is a **GDI inkjet printer**; the approach here is to let **CorelDRAW** render the PDF and then submit it to the printer natively.
 
-| Tier | Method | Notes |
-|------|--------|-------|
-| 1 | **SumatraPDF CLI** (`-print-to -silent -exit-on-print`) | GDI rendering — primary method |
-| 2 | **ShellExecute `printto`** | GDI via registered PDF handler — fallback |
-| 3 | **Hard fail** | Actionable error message shown in Flutter UI |
-
-A file-lock retry loop (10 attempts × 1s) waits for CorelDRAW to release the PDF before transmission.
+`send_to_printer.py` implements `print_pdf_via_corel()`:
+1. Waits for the composed A3 master PDF to be released (file-lock retry loop).
+2. Connects to CorelDRAW via COM automation.
+3. Opens the composed A3 `_PRINT.pdf` master.
+4. Sets `doc.PrintSettings.Printer` (from `config.json`) and selects explicit CMYK + A3 paper size.
+5. Calls `doc.PrintOut()` and closes the document.
 
 ---
 
@@ -322,20 +320,13 @@ build_orchestrator.bat
 
 Verify: `dist/orchestrator.exe` exists and is > 15 MB.
 
-### Step 2: Copy SumatraPDF portable
-Download [SumatraPDF portable](https://www.sumatrapdfreader.org/download-free-pdf-viewer) and place `SumatraPDF.exe` in:
-```
-python_engine/Core/dist/SumatraPDF.exe
-```
-It will be bundled by the Inno Setup installer into the operator's bin/ folder.
-
-### Step 3: Build Flutter
+### Step 2: Build Flutter
 
 ```bash
 flutter build windows
 ```
 
-### Step 4: Package with Inno Setup
+### Step 3: Package with Inno Setup
 
 ```bash
 & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" plakamatic_installer.iss
@@ -361,7 +352,7 @@ The `plakamatic_installer.iss` script:
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Blank page printed | Canon GDI driver can't read raw PDF | Ensure `SumatraPDF.exe` is in `bin/` folder |
+| Blank page printed | CorelDRAW print settings mismatch | Verify the selected printer, A3 paper size, and ColorMode in the CorelDRAW print settings; retry |
 | "Access is Denied" on spool | Printer not shared | Enable printer sharing in Windows Settings |
 | COM Error: RPC unavailable | CorelDRAW closed during automation | Kill CorelDRAW in Task Manager, retry |
 | Trial screen not bypassed | `bypass_trial_screen` fires too early | Increase Trial Bypass Delay to 7–10s in Settings |
@@ -378,7 +369,6 @@ Before deploying to a production machine:
 
 - [ ] CorelDRAW 2018 is installed and activated (or trial mode configured)
 - [ ] Canon iX6700 driver is installed and printer is set as "Shared"
-- [ ] `SumatraPDF.exe` (portable) is placed in `Documents\PlakaMatik Files\bin\`
 - [ ] `PlakaMatik_Setup.exe` is run as Administrator
 - [ ] On first launch, verify the log console shows "orchestrator.exe extracted" and "Template OK" messages
 - [ ] Test single plate generation before batch

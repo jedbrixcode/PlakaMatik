@@ -6,7 +6,7 @@ import '../services/backend_service.dart';
 import '../viewmodels/settings_viewmodel.dart';
 
 /// Universal print countdown dialog.
-/// Finds the latest _PRINT.pdf in Outputs and spools it via orchestrator.exe.
+/// Finds the latest _PRINT.pdf in Outputs and prints it via CorelDRAW automation.
 class PrintCountdownDialog extends StatefulWidget {
   final SettingsViewModel settings;
   final String label;
@@ -43,7 +43,7 @@ class PrintCountdownDialog extends StatefulWidget {
 class _PrintCountdownDialogState extends State<PrintCountdownDialog> {
   int _counter = 3;
   Timer? _timer;
-  bool _spooling = false;
+  bool _printing = false;
   String? _statusMessage;
 
   @override
@@ -68,8 +68,8 @@ class _PrintCountdownDialogState extends State<PrintCountdownDialog> {
   Future<void> _dispatch() async {
     if (!mounted) return;
     setState(() {
-      _spooling = true;
-      _statusMessage = 'Sending to spooler...';
+      _printing = true;
+      _statusMessage = 'Printing via CorelDRAW...';
     });
 
     try {
@@ -112,17 +112,17 @@ class _PrintCountdownDialogState extends State<PrintCountdownDialog> {
         exe,
         [
           '--config', cfg,
-          '--action', 'spool',
+          '--action', 'print_corel',
           '--pdf', pdf,
         ],
         workingDirectory: wDir,
         runInShell: false,
-      ).timeout(const Duration(seconds: 45));
+      ).timeout(const Duration(seconds: 90));
 
       if (!mounted) return;
 
       if (process.exitCode == 0) {
-        setState(() => _statusMessage = 'Successfully sent to print spooler!');
+        setState(() => _statusMessage = 'Successfully sent to printer via CorelDRAW!');
         widget.onSuccess?.call();
       } else {
         // Parse the Python output for known error signatures
@@ -145,7 +145,7 @@ class _PrintCountdownDialogState extends State<PrintCountdownDialog> {
               'The Canon iX6700 is not responding.\n'
               'Check the USB/network connection and try again.';
         } else {
-          errorMsg = 'Spool failed:\n${process.stderr}\n${process.stdout}';
+          errorMsg = 'CorelDRAW print failed:\n${process.stderr}\n${process.stdout}';
         }
         setState(() => _statusMessage = errorMsg);
       }
@@ -163,7 +163,7 @@ class _PrintCountdownDialogState extends State<PrintCountdownDialog> {
       backgroundColor: const Color(0xFF1E3A5F),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Text(
-        _spooling ? 'TRANSMITTING TO HARDWARE' : 'INITIALIZING HARDWARE SPOOLER',
+        _printing ? 'PRINTING VIA COREL DRAW' : 'INITIALIZING PRINTER',
         style: const TextStyle(
           color: Colors.white,
           fontSize: 16,
@@ -174,14 +174,14 @@ class _PrintCountdownDialogState extends State<PrintCountdownDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            _spooling
+            _printing
                 ? (_statusMessage ?? 'Sending...')
                 : 'Committing ${widget.label} to designated UV plate queue...',
             style: const TextStyle(color: Colors.white70, fontSize: 14),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 30),
-          _spooling
+          _printing
               ? const CircularProgressIndicator(color: Colors.orange)
               : Text(
                   _counter.toString(),

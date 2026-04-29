@@ -11,12 +11,20 @@ from corel_engine import CorelAutomator
 from export_manager import execute_print_merge_to_pdf
 from session_manager import cleanup_old_sessions
 from config_manager import load_config
-from send_to_printer import print_pdf
+from send_to_printer import print_pdf_via_corel
 
 def parse_args():
     parser = argparse.ArgumentParser(description='PlakaMatik Python Export Hand-off Engine')
-    parser.add_argument('--action', type=str, default='generate', choices=['generate', 'spool'], help='Action to perform')
-    parser.add_argument('--pdf', type=str, default=None, help='Target PDF path for spooling')
+    # Backwards-compatible actions:
+    # - legacy: `spool` / `print` routed to `print_corel`
+    parser.add_argument(
+        '--action',
+        type=str,
+        default='generate',
+        choices=['generate', 'spool', 'print', 'print_corel'],
+        help='Action to perform',
+    )
+    parser.add_argument('--pdf', type=str, default=None, help='Target PDF path for printing')
     parser.add_argument('--config', type=str, default=None, help='Absolute path to config.json')
     parser.add_argument('--session-id', type=str, default=None, help='Override the session ID timestamp')
     return parser.parse_known_args()[0]
@@ -118,17 +126,18 @@ if __name__ == "__main__":
     # Re-init logger since session ID might have changed
     init_logger(config.SESSION_ID, config.LOGS_DIR)
         
-    if args.action == 'spool':
-        print(f"Orchestrator received manual spool request for: {args.pdf}")
+    if args.action in ('print', 'spool', 'print_corel'):
+        print_action = 'print_corel'  # normalized action name
+        print(f"Orchestrator received {print_action} request for: {args.pdf}")
         if not args.pdf or not os.path.exists(args.pdf):
-            err_msg = f"HALTING: Cannot spool. Invalid or missing PDF path: {args.pdf}"
+            err_msg = f"HALTING: Cannot print. Invalid or missing PDF path: {args.pdf}"
             print(err_msg, file=sys.stderr)
             sys.exit(1)
-            
+
         dynamic_config = load_config(args.config)
         printer_name = dynamic_config.get("PRINTER_NAME", "Microsoft Print to PDF")
-        
-        print_pdf(args.pdf, printer_name, "manual")
+
+        print_pdf_via_corel(args.pdf, printer_name, "manual")
     else:
         print(f"Starting Unified Orchestrator Pipeline...")
         run_pipeline(args)
