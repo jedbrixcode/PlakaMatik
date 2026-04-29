@@ -6,6 +6,7 @@
 #define MyAppPublisher "JedImsonDev"
 #define MyAppExeName "plakamatic_flutterui.exe"
 #define BuildFolder "build\windows\x64\runner\Release"
+#define TemplatesSource "assets\Templates\Main Templates"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -34,6 +35,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#BuildFolder}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildFolder}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+
+; --- CorelDRAW Templates ---
+; Install CDR templates directly to the user's Documents so CorelDRAW
+; can open them without hitting Program Files permission restrictions.
+Source: "{#TemplatesSource}\*"; DestDir: "{userdocs}\PlakaMatik Files\CorelDRAW Templates\Main Templates"; Flags: ignoreversion recursesubdirs createallsubdirs; Attribs: normal
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

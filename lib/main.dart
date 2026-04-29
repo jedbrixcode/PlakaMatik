@@ -14,6 +14,8 @@ void main() async {
   await windowManager.ensureInitialized();
   // Extract bundled orchestrator.exe to a writable Documents path
   await BackendService.instance.initialize();
+  // Self-heal: restore any missing CDR templates from bundled assets
+  await BackendService.instance.ensureTemplates();
   final cleanupService = CleanupService();
 
 

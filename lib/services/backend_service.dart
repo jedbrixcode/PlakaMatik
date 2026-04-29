@@ -73,6 +73,55 @@ class BackendService {
     }
   }
 
+  /// Self-healing template guard.
+  ///
+  /// Checks that MV_PLATE.cdr and MC_PLATE.cdr are present in
+  ///   Documents\PlakaMatik Files\CorelDRAW Templates\Main Templates\
+  /// If either file is missing it is extracted from the bundled Flutter
+  /// assets — this matches the exact path the Python config.py expects.
+  static const List<String> _requiredTemplates = [
+    'MV_PLATE.cdr',
+    'MC_PLATE.cdr',
+  ];
+
+  Future<void> ensureTemplates() async {
+    try {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final String s = Platform.pathSeparator;
+      final templateDir = Directory(
+        p.join(docsDir.path, 'PlakaMatik Files', 'CorelDRAW Templates', 'Main Templates'),
+      );
+
+      if (!templateDir.existsSync()) {
+        templateDir.createSync(recursive: true);
+        // ignore: avoid_print
+        print('[BackendService] Created template directory: ${templateDir.path}');
+      }
+
+      for (final filename in _requiredTemplates) {
+        final destFile = File(p.join(templateDir.path, filename));
+        if (!destFile.existsSync()) {
+          // ignore: avoid_print
+          print('[BackendService] Missing template: $filename — restoring from assets...');
+          final ByteData data = await rootBundle.load(
+            'assets/Templates/Main Templates/$filename',
+          );
+          final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+          await destFile.writeAsBytes(bytes, flush: true);
+          // ignore: avoid_print
+          print('[BackendService] Restored: ${destFile.path}');
+        } else {
+          // ignore: avoid_print
+          print('[BackendService] Template OK: $filename');
+        }
+      }
+    } catch (e) {
+      // Non-fatal — log but don't crash startup
+      // ignore: avoid_print
+      print('[BackendService] ensureTemplates error: $e');
+    }
+  }
+
   /// Convenience: runs the orchestrator with --config pointing to PlakaMatik Files/config.json.
   /// Returns the ProcessResult.
   Future<ProcessResult> runOrchestrator({
