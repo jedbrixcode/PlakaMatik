@@ -26,12 +26,11 @@ const _issues = <_Issue>[
     category: 'Hardware',
     title: 'Blank Page Printed — Canon iX6700',
     resolution:
-        'The Canon iX6700 is a GDI inkjet printer. It cannot interpret raw '
-        'PDF bytes. PlakaMatik uses SumatraPDF.exe to render through the Windows '
-        'GDI pipeline. Ensure SumatraPDF.exe is present in:\n'
-        '  Documents\\PlakaMatik Files\\bin\\\n\n'
-        'Download the portable build from sumatrapdfreader.org and place it there, '
-        'then use the "Asset Repair" button below to verify the folder.',
+        'PlakaMatik uses CorelDRAW 2018 as the native printing engine to ensure '
+        'perfect GDI rendering for the Canon iX6700. If a blank page occurs, verify '
+        'that CorelDRAW is licensed and not showing a blocking "Save" or "Export" dialog '
+        'in the background. The engine requires CorelDRAW to be fully operational '
+        'to handle the A3 master file print request.',
     icon: Icons.print_disabled,
     iconColor: Color(0xFFF44336),
   ),
@@ -40,8 +39,8 @@ const _issues = <_Issue>[
     title: 'Printer Spooler — Access is Denied (Error 5)',
     resolution:
         'Right-click on the Canon iX6700 in Windows Printers & Scanners and '
-        'enable "Share this printer." PlakaMatik requires the printer to be '
-        'accessible as a shared device for the win32print API to open a handle.\n\n'
+        'ensure it is not "Paused." PlakaMatik requires the CorelDRAW COM engine '
+        ' to have exclusive access to the print queue to submit the A3 master job.\n\n'
         'Alternatively, use the "Flush Spooler" button below to clear any stuck jobs '
         'and restart the Windows Print Spooler service.',
     icon: Icons.lock_outline,
