@@ -73,7 +73,7 @@ Flutter writes `config.json` and `input.txt` to the operator's Documents folder 
 |-----------|-------------|
 | OS | Windows 10 / 11 (64-bit) |
 | CorelDRAW | CorelDRAW 2018 (COM automation required) |
-| Printer | Canon iX6700 series (GDI inkjet) |
+| Printer | Any printer that can communicate well with CorelDraw 2018 |
 | Runtime | Flutter 3.x SDK (for development only) |
 | Python | Python 3.10+ (for rebuilding the engine only) |
 | Inno Setup | Inno Setup 6 (for building the installer) |
@@ -368,7 +368,12 @@ The `plakamatic_installer.iss` script:
 Before deploying to a production machine:
 
 - [ ] CorelDRAW 2018 is installed and activated (or trial mode configured)
+<<<<<<< HEAD
 - [ ] Canon iX6700 driver is installed and printer is set as "Shared"
+=======
+- [ ] The Printer driver is installed and printer is set as "Shared"
+- [ ] `SumatraPDF.exe` (portable) is placed in `Documents\PlakaMatik Files\bin\`
+>>>>>>> 5a16fe2c82bc57f3b59bc1befdde274f6683a014
 - [ ] `PlakaMatik_Setup.exe` is run as Administrator
 - [ ] On first launch, verify the log console shows "orchestrator.exe extracted" and "Template OK" messages
 - [ ] Test single plate generation before batch
@@ -379,4 +384,4 @@ Before deploying to a production machine:
 ## License
 
 Internal use — LTO Plate Manufacturing Operations.  
-Developed by **JedImsonDev** for the LTO internship project, 2026.
+Developed by **JedBrixCode** for the LTO internship project, 2026.
