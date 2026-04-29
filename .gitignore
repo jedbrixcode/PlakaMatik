@@ -23,7 +23,7 @@ venv/
 csv/temp_user_input.txt
 csv/output_data.rtf
 csv/flutter_user_input.txt
-
+Output/
 # IntelliJ related
 *.iml
 *.ipr
