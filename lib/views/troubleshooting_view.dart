@@ -168,7 +168,6 @@ const _issues = <_Issue>[
   ),
 ];
 
-
 // ── View ─────────────────────────────────────────────────────────────────────
 
 class TroubleshootingView extends StatefulWidget {
@@ -181,52 +180,65 @@ class TroubleshootingView extends StatefulWidget {
 class _TroubleshootingViewState extends State<TroubleshootingView> {
   String _selectedCategory = 'All';
   bool _isSpoolerFlushing = false;
-  bool _isRepairing       = false;
-  String _actionLog       = '';
+  bool _isRepairing = false;
+  String _actionLog = '';
 
   static const _categories = ['All', 'Hardware', 'Engine', 'Automation'];
 
-  static const _bg         = Color(0xFF1A1A2E);
-  static const _surface    = Color(0xFF16213E);
-  static const _card        = Color(0xFF1F2B47);
-  static const _accent      = Color(0xFF4A90E2);
+  static const _bg = Color(0xFF1A1A2E);
+  static const _surface = Color(0xFF16213E);
+  static const _card = Color(0xFF1F2B47);
+  static const _accent = Color(0xFF4A90E2);
   static const _textPrimary = Color(0xFFE0E6F0);
-  static const _textMuted   = Color(0xFF8899AA);
-  static const _radius      = 12.0;
-  static const _pad         = 15.0;
+  static const _textMuted = Color(0xFF8899AA);
+  static const _radius = 12.0;
+  static const _pad = 15.0;
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
   Future<void> _flushSpooler() async {
-    setState(() { _isSpoolerFlushing = true; _actionLog = ''; });
+    setState(() {
+      _isSpoolerFlushing = true;
+      _actionLog = '';
+    });
     final log = StringBuffer('[Spooler] Stopping Windows Print Spooler...\n');
     try {
-      final stop = await Process.run(
-        'net', ['stop', 'spooler'],
-        runInShell: false,
-      ).timeout(const Duration(seconds: 15));
+      final stop = await Process.run('net', [
+        'stop',
+        'spooler',
+      ], runInShell: false).timeout(const Duration(seconds: 15));
       log.writeln(stop.stdout.toString().trim());
 
-      final start = await Process.run(
-        'net', ['start', 'spooler'],
-        runInShell: false,
-      ).timeout(const Duration(seconds: 15));
+      final start = await Process.run('net', [
+        'start',
+        'spooler',
+      ], runInShell: false).timeout(const Duration(seconds: 15));
       log.writeln(start.stdout.toString().trim());
       log.writeln('[Spooler] ✓ Print Spooler restarted successfully.');
     } catch (e) {
       log.writeln('[Spooler] ✗ Error: $e');
       log.writeln('[Spooler] Try running PlakaMatik as Administrator.');
     }
-    setState(() { _isSpoolerFlushing = false; _actionLog = log.toString().trim(); });
+    setState(() {
+      _isSpoolerFlushing = false;
+      _actionLog = log.toString().trim();
+    });
   }
 
   Future<void> _repairAssets() async {
-    setState(() { _isRepairing = true; _actionLog = '[Repair] Starting asset verification...\n'; });
+    setState(() {
+      _isRepairing = true;
+      _actionLog = '[Repair] Starting asset verification...\n';
+    });
     try {
       final result = await BackendService.instance.repairAllAssets();
-      setState(() { _actionLog = result; });
+      setState(() {
+        _actionLog = result;
+      });
     } catch (e) {
-      setState(() { _actionLog = '[Repair] ✗ Unexpected error: $e'; });
+      setState(() {
+        _actionLog = '[Repair] ✗ Unexpected error: $e';
+      });
     } finally {
       setState(() => _isRepairing = false);
     }
@@ -300,13 +312,14 @@ class _TroubleshootingViewState extends State<TroubleshootingView> {
             child: GestureDetector(
               onTap: () => setState(() => _selectedCategory = cat),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: active ? _accent : _card,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: active ? _accent : Colors.white12,
-                  ),
+                  border: Border.all(color: active ? _accent : Colors.white12),
                 ),
                 child: Text(
                   cat,
@@ -382,31 +395,33 @@ class _TroubleshootingViewState extends State<TroubleshootingView> {
     required bool loading,
     required String tooltip,
     required VoidCallback onPressed,
-  }) =>
-      Tooltip(
-        message: tooltip,
-        preferBelow: false,
-        child: FilledButton.icon(
-          onPressed: loading ? null : onPressed,
-          icon: loading
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : Icon(icon, size: 18),
-          label: Text(label, style: const TextStyle(fontSize: 13)),
-          style: FilledButton.styleFrom(
-            backgroundColor: color,
-            foregroundColor: Colors.white,
-            disabledBackgroundColor: color.withOpacity(0.4),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(_radius),
-            ),
-          ),
+  }) => Tooltip(
+    message: tooltip,
+    preferBelow: false,
+    child: FilledButton.icon(
+      onPressed: loading ? null : onPressed,
+      icon: loading
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : Icon(icon, size: 18),
+      label: Text(label, style: const TextStyle(fontSize: 13)),
+      style: FilledButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        disabledBackgroundColor: color.withOpacity(0.4),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_radius),
         ),
-      );
+      ),
+    ),
+  );
 
   Widget _buildActionLog() => Container(
     width: double.infinity,
@@ -433,17 +448,16 @@ class _TroubleshootingViewState extends State<TroubleshootingView> {
   );
 }
 
-
 // ── Issue Card ────────────────────────────────────────────────────────────────
 
 class _IssueCard extends StatelessWidget {
   const _IssueCard({required this.issue});
   final _Issue issue;
 
-  static const _card        = Color(0xFF1F2B47);
+  static const _card = Color(0xFF1F2B47);
   static const _textPrimary = Color(0xFFE0E6F0);
-  static const _textMuted   = Color(0xFF8899AA);
-  static const _radius      = 10.0;
+  static const _textMuted = Color(0xFF8899AA);
+  static const _radius = 10.0;
 
   @override
   Widget build(BuildContext context) {
