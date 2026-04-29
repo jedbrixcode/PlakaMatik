@@ -125,8 +125,29 @@ class _PrintCountdownDialogState extends State<PrintCountdownDialog> {
         setState(() => _statusMessage = 'Successfully sent to print spooler!');
         widget.onSuccess?.call();
       } else {
-        setState(() =>
-            _statusMessage = 'Spool failed: ${process.stderr}\n${process.stdout}');
+        // Parse the Python output for known error signatures
+        final combinedOut = '${process.stderr}\n${process.stdout}'.toUpperCase();
+        String errorMsg;
+
+        if (combinedOut.contains('ACCESS IS DENIED') ||
+            combinedOut.contains('ACCESS DENIED')) {
+          errorMsg =
+              'Printer Communication Error:\n'
+              'The Canon iX6700 rejected the job.\n\n'
+              'Please check:\n'
+              '  • Printer is powered ON and online\n'
+              '  • Printer is set as "Shared" in Windows Settings\n'
+              '  • Run PlakaMatik as Administrator';
+        } else if (combinedOut.contains('OFFLINE') ||
+                   combinedOut.contains('NOT RESPONDING')) {
+          errorMsg =
+              'Printer Offline:\n'
+              'The Canon iX6700 is not responding.\n'
+              'Check the USB/network connection and try again.';
+        } else {
+          errorMsg = 'Spool failed:\n${process.stderr}\n${process.stdout}';
+        }
+        setState(() => _statusMessage = errorMsg);
       }
     } catch (e) {
       if (mounted) setState(() => _statusMessage = 'Error: $e');

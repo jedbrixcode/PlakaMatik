@@ -39,7 +39,7 @@ Source: "{#BuildFolder}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdir
 ; --- CorelDRAW Templates ---
 ; Install CDR templates directly to the user's Documents so CorelDRAW
 ; can open them without hitting Program Files permission restrictions.
-Source: "{#TemplatesSource}\*"; DestDir: "{userdocs}\PlakaMatik Files\CorelDRAW Templates\Main Templates"; Flags: ignoreversion recursesubdirs createallsubdirs; Attribs: normal
+Source: "{#TemplatesSource}\*"; DestDir: "{userdocs}\PlakaMatik Files\CorelDRAW Templates\Main Templates"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
