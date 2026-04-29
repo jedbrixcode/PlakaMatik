@@ -118,7 +118,7 @@ class BatchViewModel extends ChangeNotifier {
         exe,
         pyArgs,
         workingDirectory: wDir,
-        runInShell: true,
+        runInShell: false,
       ).timeout(const Duration(seconds: 120));
 
       if (process.exitCode == 0) {
@@ -203,7 +203,7 @@ class BatchViewModel extends ChangeNotifier {
         exe,
         ['--config', cfg, '--action', 'spool', '--pdf', pdf],
         workingDirectory: wDir,
-        runInShell: true,
+        runInShell: false,
       ).timeout(const Duration(seconds: 30));
 
       if (process.exitCode == 0) {

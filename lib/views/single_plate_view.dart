@@ -76,7 +76,7 @@ class _SinglePlateViewState extends State<SinglePlateView> {
         exe,
         ['--config', cfg],
         workingDirectory: wDir,
-        runInShell: true,
+        runInShell: false,
       ).timeout(const Duration(seconds: 120));
 
       if (!mounted) return;

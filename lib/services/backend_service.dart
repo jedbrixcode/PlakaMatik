@@ -93,7 +93,7 @@ class BackendService {
       normalizedExe,
       ['--config', normalizedConfig],
       workingDirectory: workDir,
-      runInShell: true,
+      runInShell: false,
     ).timeout(timeout);
   }
 }

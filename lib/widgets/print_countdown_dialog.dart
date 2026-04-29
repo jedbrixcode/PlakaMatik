@@ -116,7 +116,7 @@ class _PrintCountdownDialogState extends State<PrintCountdownDialog> {
           '--pdf', pdf,
         ],
         workingDirectory: wDir,
-        runInShell: true,
+        runInShell: false,
       ).timeout(const Duration(seconds: 45));
 
       if (!mounted) return;

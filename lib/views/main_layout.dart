@@ -80,7 +80,7 @@ class MainLayout extends StatelessWidget {
                     exePath,
                     [],
                     workingDirectory: File(exePath).parent.path,
-                    runInShell: true,
+                    runInShell: false,
                   ).then((result) {
                     print("Orchestrator Terminated. Code: ${result.exitCode}");
                     print("Logs Context: ${result.stdout}");
