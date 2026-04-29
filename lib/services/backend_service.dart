@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 /// BackendService: extracts the bundled orchestrator.exe from Flutter assets
@@ -21,13 +22,19 @@ class BackendService {
     return _executablePath!;
   }
 
+  /// The parent directory (bin/) of the orchestrator.exe.
+  /// Use this as the workingDirectory in Process.run to guarantee the shell
+  /// context is correct even when the path contains spaces.
+  String get binDirPath => File(executablePath).parent.path;
+
   /// Extracts orchestrator.exe from assets to a writable Documents subfolder.
   /// Safe to call multiple times — only re-extracts if the asset has changed.
   Future<void> initialize() async {
     try {
-      final docsDir   = await getApplicationDocumentsDirectory();
-      final binDir    = Directory('${docsDir.path}/PlakaMatik Files/bin');
-      final destFile  = File('${binDir.path}/orchestrator.exe');
+      final docsDir  = await getApplicationDocumentsDirectory();
+      // Use native path separators so Windows never sees a mixed-slash path.
+      final binDir   = Directory(p.join(docsDir.path, 'PlakaMatik Files', 'bin'));
+      final destFile = File(p.join(binDir.path, 'orchestrator.exe'));
 
       if (!binDir.existsSync()) {
         binDir.createSync(recursive: true);
@@ -53,12 +60,14 @@ class BackendService {
         print('[BackendService] orchestrator.exe already up-to-date.');
       }
 
-      _executablePath = destFile.path;
+      // Normalize to native Windows backslashes
+      _executablePath = destFile.path.replaceAll('/', Platform.pathSeparator);
     } catch (e) {
       // Fallback to dev path if asset extraction fails (dev builds without asset)
       final String projectRoot = Directory.current.path;
-      _executablePath =
-          '$projectRoot/python_engine/Core/dist/orchestrator.exe';
+      _executablePath = p.join(
+        projectRoot, 'python_engine', 'Core', 'dist', 'orchestrator.exe'
+      );
       // ignore: avoid_print
       print('[BackendService] Asset extraction failed, using dev path. Error: $e');
     }
@@ -69,17 +78,22 @@ class BackendService {
   Future<ProcessResult> runOrchestrator({
     required String plakamaticDir,
     Duration timeout = const Duration(seconds: 120),
-    String workingDirectory = '',
   }) async {
-    final configPath = '$plakamaticDir/config.json';
-    final cwd = workingDirectory.isEmpty
-        ? File(executablePath).parent.path
-        : workingDirectory;
+    final String s = Platform.pathSeparator;
 
+    // Build every path segment with Platform.pathSeparator — no mixed slashes.
+    final String normalizedExe    = executablePath.replaceAll('/', s);
+    final String normalizedConfig = p.join(plakamaticDir, 'config.json')
+        .replaceAll('/', s);
+    // workingDirectory = the bin folder — shell is already "inside" it.
+    final String workDir = binDirPath.replaceAll('/', s);
+
+    // Clean List<String> args — Flutter + runInShell handles space-quoting.
     return Process.run(
-      executablePath,
-      ['--config', configPath],
-      workingDirectory: cwd,
+      normalizedExe,
+      ['--config', normalizedConfig],
+      workingDirectory: workDir,
+      runInShell: true,
     ).timeout(timeout);
   }
 }

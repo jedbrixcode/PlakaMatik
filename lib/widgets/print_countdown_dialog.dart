@@ -76,7 +76,7 @@ class _PrintCountdownDialogState extends State<PrintCountdownDialog> {
       final docsDir     = await getApplicationDocumentsDirectory();
       final outputsDir  = Directory('${docsDir.path}/PlakaMatik Files/Outputs');
       final configPath  = '${docsDir.path}/PlakaMatik Files/config.json';
-      final projectRoot = Directory.current.path;
+
       final exePath     = BackendService.instance.executablePath;
 
       // Find the latest _PRINT.pdf
@@ -102,14 +102,21 @@ class _PrintCountdownDialogState extends State<PrintCountdownDialog> {
         return;
       }
 
+      final String s    = Platform.pathSeparator;
+      final String exe  = exePath.replaceAll('/', s);
+      final String cfg  = configPath.replaceAll('/', s);
+      final String pdf  = printFile.path.replaceAll('/', s);
+      final String wDir = BackendService.instance.binDirPath.replaceAll('/', s);
+
       final process = await Process.run(
-        exePath,
+        exe,
         [
-          '--config', configPath,
+          '--config', cfg,
           '--action', 'spool',
-          '--pdf', printFile.path,
+          '--pdf', pdf,
         ],
-        workingDirectory: '$projectRoot/python_engine/Core',
+        workingDirectory: wDir,
+        runInShell: true,
       ).timeout(const Duration(seconds: 45));
 
       if (!mounted) return;

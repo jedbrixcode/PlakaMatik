@@ -64,14 +64,19 @@ class _SinglePlateViewState extends State<SinglePlateView> {
       final bytes = [0xEF, 0xBB, 0xBF, ...buffer.toString().codeUnits];
       await file.writeAsBytes(bytes);
 
-      final String projectRoot = Directory.current.path;
       final exePath = BackendService.instance.executablePath;
       final configPath = '$plakamaticDir/config.json';
 
+      final String s   = Platform.pathSeparator;
+      final String exe  = exePath.replaceAll('/', s);
+      final String cfg  = configPath.replaceAll('/', s);
+      final String wDir = BackendService.instance.binDirPath.replaceAll('/', s);
+
       final process = await Process.run(
-        exePath,
-        ['--config', configPath],
-        workingDirectory: '$projectRoot/python_engine/Core',
+        exe,
+        ['--config', cfg],
+        workingDirectory: wDir,
+        runInShell: true,
       ).timeout(const Duration(seconds: 120));
 
       if (!mounted) return;

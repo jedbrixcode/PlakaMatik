@@ -68,8 +68,10 @@ class SettingsView extends StatelessWidget {
                           'Template Path Configuration',
                           'OPEN',
                           () async {
+                            final docs =
+                                await getApplicationDocumentsDirectory();
                             Process.run('explorer', [
-                              '${Directory.current.path}\\python_engine\\Core\\CorelDRAW Templates',
+                              '${docs.path}\\PlakaMatik Files\\CorelDRAW Templates',
                             ]);
                           },
                         ),

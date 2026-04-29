@@ -104,16 +104,21 @@ class BatchViewModel extends ChangeNotifier {
       final bytes = [0xEF, 0xBB, 0xBF, ...utf8.encode(buffer.toString())];
       await file.writeAsBytes(bytes);
 
-      final String projectRoot = Directory.current.path;
       final exePath = BackendService.instance.executablePath;
       final configPath = '${docsDir.path}/PlakaMatik Files/config.json';
 
-      List<String> pyArgs = ['--config', configPath];
+      final String s    = Platform.pathSeparator;
+      final String exe   = exePath.replaceAll('/', s);
+      final String cfg   = configPath.replaceAll('/', s);
+      final String wDir  = BackendService.instance.binDirPath.replaceAll('/', s);
+
+      final List<String> pyArgs = ['--config', cfg];
 
       final process = await Process.run(
-        exePath,
+        exe,
         pyArgs,
-        workingDirectory: '$projectRoot/python_engine/Core',
+        workingDirectory: wDir,
+        runInShell: true,
       ).timeout(const Duration(seconds: 120));
 
       if (process.exitCode == 0) {
@@ -181,18 +186,24 @@ class BatchViewModel extends ChangeNotifier {
     isProcessing = true;
     notifyListeners();
     try {
-      final String projectRoot = Directory.current.path;
-      final exePath = '$projectRoot/python_engine/Core/dist/orchestrator.exe';
+      final exePath = BackendService.instance.executablePath;
       final docsDir = await getApplicationDocumentsDirectory();
 
       String targetPdf =
           '${docsDir.path}/PlakaMatik Files/Outputs/${cleanupService.currentSessionId}_PRINT.pdf';
       final configPath = '${docsDir.path}/PlakaMatik Files/config.json';
 
+      final String s       = Platform.pathSeparator;
+      final String exe      = exePath.replaceAll('/', s);
+      final String cfg      = configPath.replaceAll('/', s);
+      final String pdf      = targetPdf.replaceAll('/', s);
+      final String wDir     = BackendService.instance.binDirPath.replaceAll('/', s);
+
       final process = await Process.run(
-        exePath,
-        ['--config', configPath, '--action', 'spool', '--pdf', targetPdf],
-        workingDirectory: '$projectRoot/python_engine/Core',
+        exe,
+        ['--config', cfg, '--action', 'spool', '--pdf', pdf],
+        workingDirectory: wDir,
+        runInShell: true,
       ).timeout(const Duration(seconds: 30));
 
       if (process.exitCode == 0) {

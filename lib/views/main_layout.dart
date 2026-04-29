@@ -8,6 +8,7 @@ import 'single_plate_view.dart';
 import 'information_view.dart';
 import 'settings_view.dart';
 import 'troubleshooting_view.dart';
+import '../services/backend_service.dart';
 
 class MainLayout extends StatelessWidget {
   const MainLayout({super.key});
@@ -73,13 +74,13 @@ class MainLayout extends StatelessWidget {
               opacity: 0.6,
               child: FilledButton.icon(
                 onPressed: () async {
-                  final String dir = Directory.current.path;
-                  final exePath = '$dir/python_engine/Core/dist/orchestrator.exe';
+                  final exePath = BackendService.instance.executablePath;
                   print("Triggering Manual Orchestrator Debug Button...");
                   Process.run(
                     exePath,
                     [],
-                    workingDirectory: '$dir/python_engine/Core',
+                    workingDirectory: File(exePath).parent.path,
+                    runInShell: true,
                   ).then((result) {
                     print("Orchestrator Terminated. Code: ${result.exitCode}");
                     print("Logs Context: ${result.stdout}");

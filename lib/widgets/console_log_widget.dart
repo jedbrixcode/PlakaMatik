@@ -63,6 +63,8 @@ class _ConsoleLogWidgetState extends State<ConsoleLogWidget> {
                     scrollDirection: Axis.horizontal,
                     child: Text(
                       logs.join('\n'),
+                      softWrap: true,
+                      overflow: TextOverflow.visible,
                       style: const TextStyle(
                         color: Colors.lightGreen,
                         fontFamily: 'monospace',
