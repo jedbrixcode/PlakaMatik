@@ -1,147 +1,146 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'path_service.dart';
 
-/// BackendService: extracts the bundled orchestrator.exe from Flutter assets
-/// into Documents/PlakaMatik Files/bin/ on first run (or whenever it changes).
-/// All Process.run calls should use [executablePath] instead of the dev dist path.
+/// Manages the lifecycle of the bundled Python orchestrator.
+///
+/// Responsibilities:
+///   • Extract orchestrator.exe from Flutter assets → Documents/bin/ on first run.
+///   • Self-heal missing CDR templates from bundled assets.
+///   • Expose [runOrchestrator] for callers — all paths are pre-normalized.
 class BackendService {
-  static BackendService? _instance;
-  static BackendService get instance => _instance ??= BackendService._();
   BackendService._();
+  static final BackendService instance = BackendService._();
 
   String? _executablePath;
 
-  /// The resolved path to orchestrator.exe.
-  /// Call [initialize] before accessing this.
-  String get executablePath {
-    if (_executablePath == null) {
-      throw StateError('BackendService not initialized. Call initialize() first.');
-    }
-    return _executablePath!;
-  }
+  /// Normalized path to orchestrator.exe. Throws if [initialize] was not called.
+  String get executablePath => _executablePath ??
+      (throw StateError('BackendService.initialize() must be called first.'));
 
-  /// The parent directory (bin/) of the orchestrator.exe.
-  /// Use this as the workingDirectory in Process.run to guarantee the shell
-  /// context is correct even when the path contains spaces.
+  /// Parent bin/ directory — use as workingDirectory in Process.run.
   String get binDirPath => File(executablePath).parent.path;
 
-  /// Extracts orchestrator.exe from assets to a writable Documents subfolder.
-  /// Safe to call multiple times — only re-extracts if the asset has changed.
+  // ── Initialization ──────────────────────────────────────────────────────────
+
+  /// Extracts the orchestrator binary from assets to a writable Documents folder.
+  /// Safe to call on every launch — only re-writes when the binary has changed.
   Future<void> initialize() async {
     try {
-      final docsDir  = await getApplicationDocumentsDirectory();
-      // Use native path separators so Windows never sees a mixed-slash path.
-      final binDir   = Directory(p.join(docsDir.path, 'PlakaMatik Files', 'bin'));
-      final destFile = File(p.join(binDir.path, 'orchestrator.exe'));
+      final paths   = await PathService.resolve();
+      final binDir  = Directory(paths.binDir);
+      final dest    = File(paths.orchestratorExe);
 
-      if (!binDir.existsSync()) {
-        binDir.createSync(recursive: true);
-      }
+      if (!binDir.existsSync()) binDir.createSync(recursive: true);
 
-      // Load the asset bytes
-      final ByteData assetData = await rootBundle.load('assets/orchestrator.exe');
-      final List<int> assetBytes = assetData.buffer.asUint8List(
-        assetData.offsetInBytes,
-        assetData.lengthInBytes,
-      );
+      final data  = await rootBundle.load('assets/orchestrator.exe');
+      final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 
-      // Only overwrite if file is missing or has a different size (quick change check)
-      bool needsWrite = !destFile.existsSync() ||
-          destFile.lengthSync() != assetBytes.length;
-
-      if (needsWrite) {
-        await destFile.writeAsBytes(assetBytes, flush: true);
+      if (!dest.existsSync() || dest.lengthSync() != bytes.length) {
+        await dest.writeAsBytes(bytes, flush: true);
         // ignore: avoid_print
-        print('[BackendService] orchestrator.exe extracted to ${destFile.path}');
+        print('[BackendService] orchestrator.exe extracted → ${dest.path}');
       } else {
         // ignore: avoid_print
-        print('[BackendService] orchestrator.exe already up-to-date.');
+        print('[BackendService] orchestrator.exe up-to-date.');
       }
 
-      // Normalize to native Windows backslashes
-      _executablePath = destFile.path.replaceAll('/', Platform.pathSeparator);
+      _executablePath = PlakaMatikPaths.norm(dest.path);
     } catch (e) {
-      // Fallback to dev path if asset extraction fails (dev builds without asset)
-      final String projectRoot = Directory.current.path;
+      // Dev fallback — runs when asset is not bundled (flutter run from source)
       _executablePath = p.join(
-        projectRoot, 'python_engine', 'Core', 'dist', 'orchestrator.exe'
+        Directory.current.path,
+        'python_engine', 'Core', 'dist', 'orchestrator.exe',
       );
       // ignore: avoid_print
-      print('[BackendService] Asset extraction failed, using dev path. Error: $e');
+      print('[BackendService] Asset extraction failed, using dev path. $e');
     }
   }
 
-  /// Self-healing template guard.
-  ///
-  /// Checks that MV_PLATE.cdr and MC_PLATE.cdr are present in
-  ///   Documents\PlakaMatik Files\CorelDRAW Templates\Main Templates\
-  /// If either file is missing it is extracted from the bundled Flutter
-  /// assets — this matches the exact path the Python config.py expects.
-  static const List<String> _requiredTemplates = [
-    'MV_PLATE.cdr',
-    'MC_PLATE.cdr',
-  ];
+  // ── Template Guard ──────────────────────────────────────────────────────────
 
+  static const _requiredTemplates = ['MV_PLATE.cdr', 'MC_PLATE.cdr'];
+
+  /// Verifies CDR templates exist in Documents and restores them from assets
+  /// if any are missing. Non-fatal — logs and continues on any error.
   Future<void> ensureTemplates() async {
     try {
-      final docsDir = await getApplicationDocumentsDirectory();
-      final String s = Platform.pathSeparator;
-      final templateDir = Directory(
-        p.join(docsDir.path, 'PlakaMatik Files', 'CorelDRAW Templates', 'Main Templates'),
-      );
+      final paths  = await PathService.resolve();
+      final tmplDir = Directory(paths.templateDir);
+      if (!tmplDir.existsSync()) tmplDir.createSync(recursive: true);
 
-      if (!templateDir.existsSync()) {
-        templateDir.createSync(recursive: true);
-        // ignore: avoid_print
-        print('[BackendService] Created template directory: ${templateDir.path}');
-      }
-
-      for (final filename in _requiredTemplates) {
-        final destFile = File(p.join(templateDir.path, filename));
-        if (!destFile.existsSync()) {
+      for (final name in _requiredTemplates) {
+        final dest = File(p.join(paths.templateDir, name));
+        if (!dest.existsSync()) {
           // ignore: avoid_print
-          print('[BackendService] Missing template: $filename — restoring from assets...');
-          final ByteData data = await rootBundle.load(
-            'assets/Templates/Main Templates/$filename',
-          );
+          print('[BackendService] Restoring missing template: $name');
+          final data  = await rootBundle.load('assets/Templates/Main Templates/$name');
           final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
-          await destFile.writeAsBytes(bytes, flush: true);
+          await dest.writeAsBytes(bytes, flush: true);
           // ignore: avoid_print
-          print('[BackendService] Restored: ${destFile.path}');
+          print('[BackendService] Restored → ${dest.path}');
         } else {
           // ignore: avoid_print
-          print('[BackendService] Template OK: $filename');
+          print('[BackendService] Template OK: $name');
         }
       }
     } catch (e) {
-      // Non-fatal — log but don't crash startup
       // ignore: avoid_print
-      print('[BackendService] ensureTemplates error: $e');
+      print('[BackendService] ensureTemplates error (non-fatal): $e');
     }
   }
 
-  /// Convenience: runs the orchestrator with --config pointing to PlakaMatik Files/config.json.
-  /// Returns the ProcessResult.
+  /// Force-repairs all assets (orchestrator + templates) regardless of current state.
+  /// Called by the Troubleshooting Hub's "Asset Repair" button.
+  Future<String> repairAllAssets() async {
+    final log = StringBuffer();
+    try {
+      final paths  = await PathService.resolve();
+
+      // 1. Re-extract orchestrator
+      final binDir = Directory(paths.binDir);
+      final dest   = File(paths.orchestratorExe);
+      if (!binDir.existsSync()) binDir.createSync(recursive: true);
+      final data  = await rootBundle.load('assets/orchestrator.exe');
+      final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      await dest.writeAsBytes(bytes, flush: true);
+      log.writeln('✓ orchestrator.exe re-extracted → ${dest.path}');
+      _executablePath = PlakaMatikPaths.norm(dest.path);
+
+      // 2. Re-extract templates
+      final tmplDir = Directory(paths.templateDir);
+      if (!tmplDir.existsSync()) tmplDir.createSync(recursive: true);
+      for (final name in _requiredTemplates) {
+        final tDest  = File(p.join(paths.templateDir, name));
+        final tData  = await rootBundle.load('assets/Templates/Main Templates/$name');
+        final tBytes = tData.buffer.asUint8List(tData.offsetInBytes, tData.lengthInBytes);
+        await tDest.writeAsBytes(tBytes, flush: true);
+        log.writeln('✓ $name restored → ${tDest.path}');
+      }
+    } catch (e) {
+      log.writeln('✗ Repair error: $e');
+    }
+    return log.toString().trim();
+  }
+
+  // ── Process Execution ───────────────────────────────────────────────────────
+
+  /// Runs the orchestrator with [--config <configJson>].
+  /// Uses [runInShell: false] to call CreateProcess directly — bypasses
+  /// cmd.exe quote-stripping that breaks paths with spaces (e.g. Win10 PRO).
   Future<ProcessResult> runOrchestrator({
     required String plakamaticDir,
     Duration timeout = const Duration(seconds: 120),
   }) async {
-    final String s = Platform.pathSeparator;
+    final exe    = PlakaMatikPaths.norm(executablePath);
+    final config = PlakaMatikPaths.norm(p.join(plakamaticDir, 'config.json'));
+    final wDir   = PlakaMatikPaths.norm(binDirPath);
 
-    // Build every path segment with Platform.pathSeparator — no mixed slashes.
-    final String normalizedExe    = executablePath.replaceAll('/', s);
-    final String normalizedConfig = p.join(plakamaticDir, 'config.json')
-        .replaceAll('/', s);
-    // workingDirectory = the bin folder — shell is already "inside" it.
-    final String workDir = binDirPath.replaceAll('/', s);
-
-    // Clean List<String> args — Flutter + runInShell handles space-quoting.
     return Process.run(
-      normalizedExe,
-      ['--config', normalizedConfig],
-      workingDirectory: workDir,
+      exe,
+      ['--config', config],
+      workingDirectory: wDir,
       runInShell: false,
     ).timeout(timeout);
   }
