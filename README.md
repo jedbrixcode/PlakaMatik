@@ -377,7 +377,7 @@ The `plakamatic_installer.iss` script:
 Before deploying to a production machine:
 
 - [ ] CorelDRAW 2018 is installed and activated (or trial mode configured)
-- [ ] Canon iX6700 driver is installed and printer is set as "Shared"
+- [ ] The Printer driver is installed and printer is set as "Shared"
 - [ ] `SumatraPDF.exe` (portable) is placed in `Documents\PlakaMatik Files\bin\`
 - [ ] `PlakaMatik_Setup.exe` is run as Administrator
 - [ ] On first launch, verify the log console shows "orchestrator.exe extracted" and "Template OK" messages
